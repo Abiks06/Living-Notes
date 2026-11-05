@@ -1,0 +1,112 @@
+import { DataTexture, FloatType, NearestFilter, RGBAFormat } from 'three';
+import { DEFAULT_WORD } from '../../settings/schema';
+
+/**
+ * Point-cloud targets that can't be written as a closed-form function of the particle
+ * index: the "RESONANCE" wordmark and the Lorenz attractor. One texel per particle,
+ * laid out exactly like the simulation textures so the shader can `texelFetch` them.
+ */
+
+function createTargetTexture(size: number, data: Float32Array): DataTexture {
+  const texture = new DataTexture(data, size, size, RGBAFormat, FloatType);
+  texture.minFilter = NearestFilter;
+  texture.magFilter = NearestFilter;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+const CANVAS_WIDTH = 1024;
+const CANVAS_HEIGHT = 220;
+const FONT_PX = 150;
+const FONT_STACK = '"Arial Black", "Segoe UI", system-ui, sans-serif';
+const MAX_WORLD_WIDTH = 7.4;
+const MAX_WORLD_HEIGHT = 2.2;
+
+/** Draws the word and returns the filled pixels plus its fitted world scale. */
+function rasterizeWord(word: string): { filled: number[]; scale: number } | null {
+  const canvas = document.createElement('canvas');
+  canvas.width = CANVAS_WIDTH;
+  canvas.height = CANVAS_HEIGHT;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return null;
+
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `900 ${FONT_PX}px ${FONT_STACK}`;
+  // Long words and wide fallback fonts shrink to fit the canvas.
+  const natural = ctx.measureText(word).width;
+  const fit = Math.min(1, (CANVAS_WIDTH * 0.94) / Math.max(natural, 1));
+  ctx.font = `900 ${Math.floor(FONT_PX * fit)}px ${FONT_STACK}`;
+  ctx.fillText(word, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 6);
+
+  const pixels = ctx.getImageData(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT).data;
+  const filled: number[] = [];
+  for (let i = 0; i < CANVAS_WIDTH * CANVAS_HEIGHT; i++) {
+    if ((pixels[i * 4 + 3] ?? 0) > 128) filled.push(i);
+  }
+  const drawnWidth = Math.max(natural * fit, 1);
+  // Short words grow to fill the frame instead of sitting small in the middle.
+  const scale = Math.min(MAX_WORLD_WIDTH / drawnWidth, MAX_WORLD_HEIGHT / (FONT_PX * fit));
+  return { filled, scale };
+}
+
+/** Writes one target per particle, sampled from the word's filled pixels. */
+export function fillTextTargets(data: Float32Array, word: string): void {
+  let raster = rasterizeWord(word);
+  // A word of glyphs this device can't draw would otherwise collapse to a single point.
+  if (raster?.filled.length === 0) raster = rasterizeWord(DEFAULT_WORD);
+  if (!raster) return;
+  const { filled, scale } = raster;
+
+  for (let i = 0; i < data.length; i += 4) {
+    const pixel = filled[Math.floor(Math.random() * filled.length)] ?? 0;
+    const x = (pixel % CANVAS_WIDTH) + Math.random();
+    const y = Math.floor(pixel / CANVAS_WIDTH) + Math.random();
+    data[i] = (x - CANVAS_WIDTH / 2) * scale;
+    data[i + 1] = -(y - CANVAS_HEIGHT / 2) * scale;
+    data[i + 2] = (Math.random() - 0.5) * 0.35;
+    data[i + 3] = 1;
+  }
+}
+
+export function createTextTargets(size: number, word: string): DataTexture {
+  const data = new Float32Array(size * size * 4);
+  fillTextTargets(data, word);
+  return createTargetTexture(size, data);
+}
+
+/**
+ * One long Lorenz trajectory (σ=10, ρ=28, β=8/3), stored in order. Because consecutive
+ * texels are consecutive points in time, the shader can advance each particle's index
+ * to make the whole cloud flow along the butterfly.
+ */
+export function createLorenzTargets(size: number): DataTexture {
+  const count = size * size;
+  const data = new Float32Array(count * 4);
+  const dt = 0.004;
+  let x = 0.1;
+  let y = 0;
+  let z = 0;
+  const step = () => {
+    const dx = 10 * (y - x);
+    const dy = x * (28 - z) - y;
+    const dz = x * y - (8 / 3) * z;
+    x += dx * dt;
+    y += dy * dt;
+    z += dz * dt;
+  };
+  for (let i = 0; i < 2000; i++) step(); // settle onto the attractor
+
+  const scale = 0.095;
+  for (let p = 0; p < count; p++) {
+    step();
+    step();
+    // Lorenz x/z is the classic "butterfly" view; map it onto the screen plane.
+    data[p * 4] = x * scale;
+    data[p * 4 + 1] = (z - 24) * scale;
+    data[p * 4 + 2] = y * scale * 0.6;
+    data[p * 4 + 3] = 1;
+  }
+  return createTargetTexture(size, data);
+}
