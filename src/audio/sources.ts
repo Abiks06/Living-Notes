@@ -14,6 +14,8 @@ export interface Transport {
 export interface PlaybackHandle {
   readonly node: AudioNode;
   readonly monitored: boolean;
+  /** Whether its audio may reach a recorded clip. Required, so a new source has to decide. */
+  readonly recordable: boolean;
   /** Reached us through the air, so it carries room noise that needs gating out. */
   readonly acoustic?: boolean;
   readonly transport?: Transport;
@@ -65,6 +67,7 @@ export function playBuffer(ctx: AudioContext, buffer: AudioBuffer): PlaybackHand
   return {
     node: output,
     monitored: true,
+    recordable: true,
     transport: {
       get duration() {
         return buffer.duration;
@@ -133,6 +136,7 @@ export async function playMediaUrl(
   return {
     node,
     monitored: true,
+    recordable: true,
     onEnded(listener) {
       element.addEventListener('ended', listener, { once: true });
     },
@@ -204,20 +208,21 @@ export async function openMicrophone(
     throw new AudioError('unknown', 'The microphone could not be opened.', { cause: error });
   }
 
-  return liveStreamHandle(ctx, stream, stream.getAudioTracks(), true);
+  return liveStreamHandle(ctx, stream, stream.getAudioTracks(), 'mic');
 }
 
 function liveStreamHandle(
   ctx: AudioContext,
   stream: MediaStream,
   audioTracks: MediaStreamTrack[],
-  acoustic: boolean,
+  kind: 'mic' | 'tab',
 ): PlaybackHandle {
   const node = ctx.createMediaStreamSource(new MediaStream(audioTracks));
   return {
     node,
     monitored: false,
-    acoustic,
+    recordable: kind === 'mic',
+    acoustic: kind === 'mic',
     onEnded(listener) {
       audioTracks[0]?.addEventListener('ended', listener, { once: true });
     },
@@ -267,5 +272,5 @@ export async function openTabAudio(ctx: AudioContext): Promise<PlaybackHandle> {
     stream.getTracks().forEach((track) => track.stop());
     throw new AudioError('tab-no-audio', 'The shared surface had no audio.');
   }
-  return liveStreamHandle(ctx, stream, audioTracks, false);
+  return liveStreamHandle(ctx, stream, audioTracks, 'tab');
 }

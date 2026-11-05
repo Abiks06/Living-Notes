@@ -1,6 +1,7 @@
 import { type CSSProperties, useEffect, useState } from 'react';
 import { isShortcutKey } from '../lib/keyboard';
 import { recordingSupport } from '../recording/clipRecorder';
+import { canRecordClip, TAB_RECORDING_REASON } from '../recording/recordable';
 import { startRecording, stopRecording } from '../recording/recordingActions';
 import { useAppStore } from '../state/appStore';
 import { CollapseIcon, ExpandIcon, MoonIcon, RecordIcon, StopIcon } from './icons';
@@ -10,6 +11,7 @@ const RECORDING = recordingSupport();
 function RecordButton() {
   const recording = useAppStore((state) => state.recording);
   const seconds = useAppStore((state) => state.capture.seconds);
+  const allowed = useAppStore((state) => canRecordClip(state.source));
 
   if (recording.state === 'recording') {
     const remaining = Math.max(0, Math.ceil(recording.seconds - recording.elapsed));
@@ -33,9 +35,15 @@ function RecordButton() {
     <button
       type="button"
       className="pill pill--icon record-button"
-      disabled={!RECORDING.ok}
+      disabled={!RECORDING.ok || !allowed}
       aria-label={`Record a ${seconds}-second clip`}
-      title={RECORDING.ok ? `Record a ${seconds}-second clip with sound` : RECORDING.reason}
+      title={
+        !RECORDING.ok
+          ? RECORDING.reason
+          : allowed
+            ? `Record a ${seconds}-second clip with sound`
+            : TAB_RECORDING_REASON
+      }
       onClick={startRecording}
     >
       <RecordIcon width={14} height={14} />

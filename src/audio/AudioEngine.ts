@@ -176,7 +176,7 @@ export class AudioEngine {
     fader.connect(analyser);
     if (this.pitchAnalyser) fader.connect(this.pitchAnalyser);
     if (handle.monitored) fader.connect(speakers);
-    if (this.recordDestination) fader.connect(this.recordDestination);
+    if (this.recordDestination && handle.recordable) fader.connect(this.recordDestination);
 
     const playback = { handle, fader };
     this.current = playback;

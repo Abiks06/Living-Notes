@@ -75,7 +75,7 @@ No sign-up, no install. Click once and the scene is already moving.
 
 **Capture and performance**
 
-- **Record a clip:** canvas plus audio at a steady 30 FPS to a downloadable MP4 (WebM on browsers that can't write MP4), with a countdown. Choose 15, 30, 45 or 60 seconds and a window, 16:9, 9:16 or 1:1 frame; cropped clips show a frame guide and pull the camera back while recording.
+- **Record a clip:** canvas plus audio at a steady 30 FPS to a downloadable MP4 (WebM on browsers that can't write MP4), with a countdown. Choose 15, 30, 45 or 60 seconds and a window, 16:9, 9:16 or 1:1 frame; cropped clips show a frame guide and pull the camera back while recording. Audio shared from another tab is never recorded, and switching to it ends a clip.
 - **Snapshot PNG** at the same framing.
 - **Particle count is picked by a GPU benchmark** (65k / 262k / 590k) and remembered per GPU. It uses timer queries only, so measuring never stalls a frame.
 - **Adaptive quality:** a short benchmark picks the render resolution and particle count together. If FPS still sags over a 3 s window, resolution drops first (under 54 FPS), and particles go only if it stays under 45 at 1×.

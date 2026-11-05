@@ -6,9 +6,15 @@ import { useAppStore } from '../state/appStore';
 import { type ClipRecording, downloadBlob, recordClip, recordingSupport } from './clipRecorder';
 import { requestSnapshot, startComposite, stopComposite } from './compositor';
 import { framingFactor } from './framing';
+import { canRecordClip, TAB_RECORDING_REASON } from './recordable';
 
 let stageCanvas: HTMLCanvasElement | null = null;
 let active: ClipRecording | null = null;
+
+// A clip of a local song ends where tab audio takes over; what came before it is still saved.
+useAppStore.subscribe((state, previous) => {
+  if (state.source !== previous.source && !canRecordClip(state.source)) active?.stop();
+});
 
 /** The WebGL canvas registers itself here when it's created. */
 export function registerStageCanvas(canvas: HTMLCanvasElement | null): void {
@@ -26,6 +32,15 @@ function fileBase(): string {
 export function startRecording(): void {
   const store = useAppStore.getState();
   if (active || store.recording.state !== 'idle') return;
+
+  if (!canRecordClip(store.source)) {
+    store.showNotice({
+      tone: 'info',
+      title: 'Recording isn’t available',
+      body: `${TAB_RECORDING_REASON} Play a song from your library to record.`,
+    });
+    return;
+  }
 
   const support = recordingSupport();
   if (!support.ok || !stageCanvas) {
