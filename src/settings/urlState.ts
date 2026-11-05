@@ -44,7 +44,7 @@ export function encodeSettings(settings: Settings): string {
   if (settings.autoOrbit !== DEFAULT_SETTINGS.autoOrbit)
     params.set('o', settings.autoOrbit ? '1' : '0');
 
-  if (settings.autoDirector) params.set('ad', '1');
+  if (!settings.autoDirector) params.set('ad', '0');
 
   for (const key of NUMERIC_KEYS) {
     if (settings[key] !== NUMERIC[key].default) params.set(NUMERIC[key].url, format(settings[key]));
@@ -95,7 +95,7 @@ export function decodeSettings(hash: string): Partial<Settings> {
     out.particles = tier as ParticleTier;
 
   const director = params.get('ad');
-  if (director === '1') out.autoDirector = true;
+  if (director === '0') out.autoDirector = false;
 
   const orbit = params.get('o');
   if (orbit === '0' || orbit === '1') out.autoOrbit = orbit === '1';

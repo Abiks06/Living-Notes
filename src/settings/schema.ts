@@ -71,11 +71,11 @@ export const NUMERIC: Record<NumericKey, NumericSpec> = {
   },
   aberration: {
     label: 'Chromatic aberration',
-    hint: 'Colour fringing on beats',
+    hint: 'Colour fringing on beats. Slower on laptops',
     min: 0,
     max: 3,
     step: 0.05,
-    default: 1,
+    default: 0,
     url: 'ca',
   },
   trails: {
@@ -146,7 +146,7 @@ export const DEFAULT_SETTINGS: Settings = {
   customColors: DEFAULT_CUSTOM_COLORS,
   particles: 'auto',
   autoOrbit: true,
-  autoDirector: false,
+  autoDirector: true,
   sensitivity: Array.from({ length: BAND_COUNT }, () => SENSITIVITY.default),
   bloom: NUMERIC.bloom.default,
   aberration: NUMERIC.aberration.default,

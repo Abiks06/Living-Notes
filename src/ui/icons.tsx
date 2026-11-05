@@ -129,3 +129,55 @@ export function MoonIcon(props: IconProps) {
     </Icon>
   );
 }
+
+export const ShuffleIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M3 7h3.5c2 0 3.4 1 4.5 2.8l2 3.4C14.1 15 15.5 17 17.5 17H21" />
+    <path d="M3 17h3.5c1.3 0 2.3-.5 3.2-1.3M14 8.3C15 7.400 16.2 7 17.5 7H21" />
+    <path d="m18 4 3 3-3 3M18 14l3 3-3 3" />
+  </Icon>
+);
+
+export const RepeatIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="m17 2 4 4-4 4" />
+    <path d="M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4" />
+    <path d="M21 13v2a3 3 0 0 1-3 3H3" />
+  </Icon>
+);
+
+export const RepeatOneIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="m17 2 4 4-4 4" />
+    <path d="M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4" />
+    <path d="M21 13v2a3 3 0 0 1-3 3H3" />
+    <path d="M11 10.5 12.5 10v5" />
+  </Icon>
+);
+
+export const LibraryIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M9 18V6l11-2v12" />
+    <circle cx="6.5" cy="18" r="2.5" />
+    <circle cx="17.5" cy="16" r="2.5" />
+  </Icon>
+);
+
+export const FolderIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+  </Icon>
+);
+
+export const PlayNextIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M4 6h11M4 12h7M4 18h7" />
+    <path d="m15 12 6 3.5-6 3.5Z" />
+  </Icon>
+);
+
+export const PlusIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M12 5v14M5 12h14" />
+  </Icon>
+);

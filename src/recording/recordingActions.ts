@@ -1,3 +1,4 @@
+import { useLibrary } from '../library/library';
 import { audioEngine } from '../audio/AudioEngine';
 import { useSettings } from '../settings/settingsStore';
 import { ensureStarted, startExperience } from '../state/actions';
@@ -47,7 +48,11 @@ export function startRecording(): void {
     const windowRatio = stageCanvas.width / stageCanvas.height;
     store.setCaptureFraming(framingFactor(windowRatio, aspect));
     active = recordClip({
-      canvas: aspect === 'window' ? stageCanvas : startComposite(stageCanvas, aspect),
+      // Straight from the stage where possible, as copying each frame has a cost.
+      canvas:
+        aspect === 'window' && !useLibrary.getState().nowPlaying
+          ? stageCanvas
+          : startComposite(stageCanvas, aspect),
       audio: audioEngine.recordingStream,
       seconds,
       onProgress: (elapsed) =>

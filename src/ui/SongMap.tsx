@@ -22,8 +22,8 @@ function partColour(base: string, part: number): string {
   return `#${new Color(base).offsetHSL(lookOf(part).hue, 0.1, 0).getHexString()}`;
 }
 
-function describe(song: SongSummary, time: number): string {
-  const section = sectionAt(song, time);
+function describe(song: SongSummary | null, time: number): string {
+  const section = song ? sectionAt(song, time) : null;
   if (!section) return formatTime(time);
   const visit = ORDINALS[section.visit] ?? (section.visit > 1 ? `${section.visit}th time` : '');
   const part = visit ? `Part ${section.letter}, ${visit}` : `Part ${section.letter}`;
@@ -80,13 +80,16 @@ function drawSong(
 }
 
 /**
- * The whole song on one strip: how big each section is, where it climbs and drops, and where
- * pads, notes and hits sit. It shows what the app understood, so a wrong reading is visible at
- * a glance, and it's also the way to move around the song.
+ * A thin line along the top of the player. Hovering opens it into the song map: the whole song
+ * on one strip, with how big each part is, where it climbs and drops, and where pads, notes and
+ * hits sit. It shows what the app understood, and it's also the way to move around the song.
  */
-export function SongMap({ song }: { song: SongSummary }) {
+export function SeekBar() {
+  const song = useAppStore((state) => state.song);
+  const learning = useAppStore((state) => state.learning);
   const canvas = useRef<HTMLCanvasElement>(null);
-  const future = useRef<HTMLDivElement>(null);
+  const fill = useRef<HTMLDivElement>(null);
+  const shade = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const tip = useRef<HTMLSpanElement>(null);
   const dragging = useRef(false);
@@ -101,7 +104,7 @@ export function SongMap({ song }: { song: SongSummary }) {
   useEffect(() => {
     const element = canvas.current;
     const ctx = element?.getContext('2d');
-    if (!element || !ctx) return;
+    if (!element || !ctx || !song) return;
     const redraw = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const width = element.clientWidth;
@@ -117,6 +120,11 @@ export function SongMap({ song }: { song: SongSummary }) {
     return () => observer.disconnect();
   }, [song, first, second, third]);
 
+  const show = (share: number) => {
+    if (fill.current) fill.current.style.transform = `scaleX(${share})`;
+    if (shade.current) shade.current.style.transform = `translateX(${share * 100}%)`;
+  };
+
   // Follows playback on the frame tick, writing to the DOM rather than going through React.
   useEffect(() => {
     let elapsed = UI_INTERVAL_S;
@@ -126,15 +134,15 @@ export function SongMap({ song }: { song: SongSummary }) {
       if (elapsed < UI_INTERVAL_S) return;
       elapsed = 0;
       const transport = audioEngine.transport;
-      if (!transport || dragging.current) return;
+      if (!transport || dragging.current || !input.current) return;
+      const total = Number.isFinite(transport.duration) ? transport.duration : 0;
       const now = transport.currentTime();
-      if (future.current) {
-        future.current.style.transform = `translateX(${(now / song.duration) * 100}%)`;
-      }
-      if (input.current) input.current.valueAsNumber = now;
-      const section = sectionAt(song, now);
+      if (total > 0) show(now / total);
+      input.current.max = String(total || 1);
+      input.current.valueAsNumber = now;
+      const section = song ? sectionAt(song, now) : null;
       const label = section ? `${section.kind}, part ${section.letter}` : '';
-      if (label !== spoken && input.current) {
+      if (label !== spoken) {
         spoken = label;
         input.current.setAttribute('aria-valuetext', `${formatTime(now)}, ${label}`);
       }
@@ -144,11 +152,11 @@ export function SongMap({ song }: { song: SongSummary }) {
   const showTip = (event: PointerEvent<HTMLInputElement>) => {
     const box = event.currentTarget.getBoundingClientRect();
     const place = Math.min(1, Math.max(0, (event.clientX - box.left) / box.width));
-    const time = place * song.duration;
-    if (!tip.current) return;
-    tip.current.textContent = describe(song, time);
+    const total = audioEngine.transport?.duration ?? 0;
+    if (!tip.current || !Number.isFinite(total)) return;
+    tip.current.textContent = describe(song, place * total);
     // Kept inside the strip at both ends, so the label never gets clipped.
-    tip.current.style.left = `${Math.min(86, Math.max(14, place * 100))}%`;
+    tip.current.style.left = `${Math.min(88, Math.max(12, place * 100))}%`;
     tip.current.dataset['shown'] = 'true';
   };
 
@@ -163,16 +171,21 @@ export function SongMap({ song }: { song: SongSummary }) {
   };
 
   return (
-    <div className="songmap">
-      <canvas ref={canvas} className="songmap__song" aria-hidden="true" />
-      <div ref={future} className="songmap__future" aria-hidden="true" />
-      <span ref={tip} className="songmap__tip" data-shown="false" aria-hidden="true" />
+    <div className="seek" data-mapped={song !== null} data-learning={learning}>
+      <div className="seek__map" aria-hidden="true">
+        <canvas ref={canvas} className="seek__song" />
+        <div ref={shade} className="seek__shade" />
+      </div>
+      <div className="seek__track" aria-hidden="true">
+        <div ref={fill} className="seek__fill" />
+      </div>
+      <span ref={tip} className="seek__tip" data-shown="false" aria-hidden="true" />
       <input
         ref={input}
-        className="songmap__seek"
+        className="seek__input"
         type="range"
         min={0}
-        max={song.duration}
+        max={1}
         step={0.01}
         defaultValue={0}
         aria-label="Song position"
@@ -185,24 +198,12 @@ export function SongMap({ song }: { song: SongSummary }) {
         onPointerLeave={hideTip}
         onChange={(event) => {
           const value = event.currentTarget.valueAsNumber;
-          if (future.current) {
-            future.current.style.transform = `translateX(${(value / song.duration) * 100}%)`;
-          }
+          const total = audioEngine.transport?.duration ?? 0;
+          if (total > 0) show(value / total);
           // Keyboard arrows seek immediately; pointer drags seek on release.
           if (!dragging.current) seekTo(value);
         }}
       />
-    </div>
-  );
-}
-
-/** The song map's row, with who's playing beside it. Nothing shows for a song with no timeline. */
-export function SongLearning() {
-  const learning = useAppStore((state) => state.learning);
-  if (!learning) return null;
-  return (
-    <div className="songmap songmap--learning" role="status">
-      Learning the song…
     </div>
   );
 }

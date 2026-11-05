@@ -1,3 +1,4 @@
+import { useLibrary } from '../library/library';
 import { type CaptureAspect, cropRect, outputSize } from './framing';
 
 const SNAPSHOT_TIMEOUT_MS = 2000;
@@ -17,10 +18,32 @@ interface Snapshot {
 let composite: Composite | null = null;
 let snapshot: Snapshot | null = null;
 
+/** Clips get shared without any context, so they carry the song's name themselves. */
+function drawCaption(target: Composite): void {
+  const song = useLibrary.getState().nowPlaying;
+  if (!song) return;
+  const { context, canvas } = target;
+  const unit = Math.min(canvas.width, canvas.height) / 100;
+  const x = unit * 5;
+  const y = unit * 8;
+  context.save();
+  context.textBaseline = 'alphabetic';
+  context.shadowColor = 'rgba(0, 0, 0, 0.6)';
+  context.shadowBlur = unit * 1.5;
+  context.fillStyle = '#ffffff';
+  context.font = `700 ${unit * 4.2}px Inter, system-ui, sans-serif`;
+  context.fillText(song.title, x, y, canvas.width - x * 2);
+  context.globalAlpha = 0.8;
+  context.font = `500 ${unit * 2.8}px Inter, system-ui, sans-serif`;
+  context.fillText(song.artist, x, y + unit * 4, canvas.width - x * 2);
+  context.restore();
+}
+
 function draw(source: HTMLCanvasElement, target: Composite): void {
   const crop = cropRect(source.width, source.height, target.aspect);
   const { width, height } = target.canvas;
   target.context.drawImage(source, crop.x, crop.y, crop.width, crop.height, 0, 0, width, height);
+  drawCaption(target);
 }
 
 function createComposite(source: HTMLCanvasElement, aspect: CaptureAspect): Composite | null {

@@ -2,11 +2,8 @@ import { type CSSProperties, useEffect, useState } from 'react';
 import { isShortcutKey } from '../lib/keyboard';
 import { recordingSupport } from '../recording/clipRecorder';
 import { startRecording, stopRecording } from '../recording/recordingActions';
-import { useSettings } from '../settings/settingsStore';
-import { toggleLiving } from '../state/actions';
 import { useAppStore } from '../state/appStore';
-import { CollapseIcon, ExpandIcon, MoonIcon, RecordIcon, SlidersIcon, StopIcon } from './icons';
-import { STUDIO_TOGGLE_ID } from './studio/studioIds';
+import { CollapseIcon, ExpandIcon, MoonIcon, RecordIcon, StopIcon } from './icons';
 
 const RECORDING = recordingSupport();
 
@@ -35,13 +32,13 @@ function RecordButton() {
   return (
     <button
       type="button"
-      className="pill record-button"
+      className="pill pill--icon record-button"
       disabled={!RECORDING.ok}
+      aria-label={`Record a ${seconds}-second clip`}
       title={RECORDING.ok ? `Record a ${seconds}-second clip with sound` : RECORDING.reason}
       onClick={startRecording}
     >
       <RecordIcon width={14} height={14} />
-      <span className="pill__label">Record {seconds}s</span>
     </button>
   );
 }
@@ -151,57 +148,13 @@ function LoungeToggle() {
   );
 }
 
-function StudioToggle() {
-  const open = useAppStore((state) => state.studioOpen);
-  const setOpen = useAppStore((state) => state.setStudioOpen);
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (!isShortcutKey(event)) return;
-      if (event.key === 'b' || event.key === 'B') toggleLiving();
-      if (event.key === 'c' || event.key === 'C') {
-        setOpen(!useAppStore.getState().studioOpen);
-      }
-      if (event.key === 'v' || event.key === 'V') {
-        const settings = useSettings.getState();
-        const on = !settings.autoDirector;
-        settings.set('autoDirector', on);
-        useAppStore.getState().showNotice({
-          tone: 'info',
-          title: on ? 'Auto-VJ on' : 'Auto-VJ off',
-          body: on
-            ? 'Scenes and palettes now follow the music. Press V to take over.'
-            : 'You’re back in control.',
-        });
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [setOpen]);
-
-  return (
-    <button
-      id={STUDIO_TOGGLE_ID}
-      type="button"
-      className="pill studio-toggle"
-      aria-expanded={open}
-      aria-controls="studio"
-      onClick={() => setOpen(!open)}
-    >
-      <SlidersIcon />
-      <span className="pill__label">Studio</span>
-    </button>
-  );
-}
-
-/** Top-right toolbar: record, lounge, fullscreen, studio. */
+/** Top-right toolbar: record, lounge, fullscreen. */
 export function TopActions() {
   return (
     <div className="top-actions chrome">
       <RecordButton />
       <LoungeToggle />
       <FullscreenButton />
-      <StudioToggle />
     </div>
   );
 }

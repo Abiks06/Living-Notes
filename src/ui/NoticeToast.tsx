@@ -24,7 +24,7 @@ export function NoticeToast() {
     >
       <div>
         <p className="toast__title">{notice.title}</p>
-        <p className="toast__body">{notice.body}</p>
+        {notice.body && <p className="toast__body">{notice.body}</p>}
       </div>
       <button type="button" className="toast__close" aria-label="Dismiss" onClick={dismiss}>
         <CloseIcon width={16} height={16} />

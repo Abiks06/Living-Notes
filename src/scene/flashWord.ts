@@ -28,6 +28,9 @@ export function flashWordFor(source: ActiveSource | null, word: string): string 
   const custom = word.trim();
   if (custom && custom !== DEFAULT_WORD) return custom;
   if (source?.kind === 'demo') return fit(source.title);
-  if (source?.kind === 'file') return titleFromFile(source.name) || DEFAULT_WORD;
+  if (source?.kind === 'file') {
+    if (source.title) return sanitizeWord(fit(source.title)).trim() || DEFAULT_WORD;
+    return titleFromFile(source.name) || DEFAULT_WORD;
+  }
   return DEFAULT_WORD;
 }

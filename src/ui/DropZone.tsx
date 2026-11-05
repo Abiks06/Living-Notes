@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ensureStarted, loadFiles } from '../state/actions';
+import { AUDIO_FILE } from '../library/library';
+import { playFiles } from '../library/player';
+import { ensureStarted } from '../state/actions';
+import { useAppStore } from '../state/appStore';
 
 function hasFiles(event: DragEvent): boolean {
   return Array.from(event.dataTransfer?.types ?? []).includes('Files');
@@ -34,7 +37,16 @@ export function DropZone() {
       depth = 0;
       setActive(false);
       const files = Array.from(event.dataTransfer?.files ?? []);
-      if (files.length > 0 && ensureStarted()) void loadFiles(files);
+      const audio = files.filter((file) => AUDIO_FILE.test(file.name));
+      if (files.length > 0 && audio.length === 0) {
+        useAppStore.getState().showNotice({
+          tone: 'error',
+          title: files.length > 1 ? 'No audio files there' : 'That isn’t an audio file',
+          body: 'Try MP3, FLAC, WAV, M4A or OGG files.',
+        });
+      } else if (audio.length > 0 && ensureStarted()) {
+        void playFiles(audio);
+      }
     };
 
     window.addEventListener('dragenter', onEnter);
@@ -54,7 +66,7 @@ export function DropZone() {
     <div className="drop-zone" aria-hidden="true">
       <div className="drop-zone__frame">
         <p className="drop-zone__title">Drop to visualize</p>
-        <p className="drop-zone__body">MP3, WAV or OGG</p>
+        <p className="drop-zone__body">MP3, FLAC, WAV, M4A or OGG</p>
       </div>
     </div>
   );

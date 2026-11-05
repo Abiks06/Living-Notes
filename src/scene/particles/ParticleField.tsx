@@ -20,6 +20,8 @@ import { flashWordFor } from '../flashWord';
 import { provisionalDpr, provisionalTier, TIER_TEXTURE_SIZE } from './tiers';
 
 const WORD_DEBOUNCE_MS = 300;
+/** Comfortably past the end of any crossfade, and well before most first drops. */
+const WORD_AFTER_START_MS = 2500;
 
 function activeWord(word: string): string {
   return word.trim() || DEFAULT_WORD;
@@ -94,12 +96,14 @@ export function ParticleField() {
     return () => window.clearTimeout(timer);
   }, [simulation, word]);
 
-  // Only Auto-VJ spells words on drops, so nothing is spent on it otherwise.
+  // A song's own title is spelled on its first drop, and Auto-VJ spells words on any song. It
+  // waits until a song is under way, as rasterizing would stall a crossfade.
   useEffect(() => {
-    if (!simulation || !autoDirector) return;
+    const titled = source?.kind === 'file' && Boolean(source.title);
+    if (!simulation || (!autoDirector && !titled)) return;
     const timer = window.setTimeout(
       () => simulation.setFlashWord(flashWordFor(source, word)),
-      WORD_DEBOUNCE_MS,
+      titled ? WORD_AFTER_START_MS : WORD_DEBOUNCE_MS,
     );
     return () => window.clearTimeout(timer);
   }, [simulation, autoDirector, source, word]);

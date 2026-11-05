@@ -1,7 +1,7 @@
 export const CAPTURE_ASPECTS = ['window', '16:9', '9:16', '1:1'] as const;
 export type CaptureAspect = (typeof CAPTURE_ASPECTS)[number];
 
-export const CLIP_LENGTHS = [10, 15, 30] as const;
+export const CLIP_LENGTHS = [15, 30, 45, 60] as const;
 export type ClipLength = (typeof CLIP_LENGTHS)[number];
 
 const RATIO: Record<Exclude<CaptureAspect, 'window'>, number> = {

@@ -1,6 +1,6 @@
 import { Color } from 'three';
 import { audioEngine } from '../audio/AudioEngine';
-import { paletteColors } from './palettes';
+import { paletteColors, type PaletteColors } from './palettes';
 import type { Settings } from './schema';
 import { useSettings } from './settingsStore';
 
@@ -23,6 +23,9 @@ export const liveLook = {
 
 export type LiveLook = typeof liveLook;
 
+/** The current song's cover colours, which win over the chosen palette while it plays. */
+let songColours: PaletteColors | null = null;
+
 function apply(settings: Settings): void {
   liveLook.curl = settings.curl;
   liveLook.turbulence = settings.turbulence;
@@ -32,12 +35,18 @@ function apply(settings: Settings): void {
   liveLook.bloom = settings.bloom;
   liveLook.aberration = settings.aberration;
   liveLook.trails = settings.trails;
-  paletteColors(settings.palette, settings.customColors).forEach((hex, i) => {
+  (songColours ?? paletteColors(settings.palette, settings.customColors)).forEach((hex, i) => {
     liveLook.palette[i]?.set(hex);
   });
+  document.documentElement.style.setProperty('--tint', liveLook.palette[2].getStyle());
   settings.sensitivity.forEach((value, band) => {
     audioEngine.sensitivity[band] = value;
   });
+}
+
+export function setSongColours(colours: PaletteColors | null): void {
+  songColours = colours;
+  apply(useSettings.getState());
 }
 
 /** Push settings into the audio engine and the render loop now and on every change. */

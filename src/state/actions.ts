@@ -1,14 +1,17 @@
-import { audioEngine } from '../audio/AudioEngine';
+import { audioEngine, type PlayOptions } from '../audio/AudioEngine';
 import type { Actor } from '../audio/cast';
 import { DEFAULT_DEMO, findDemo, isTrackFileAvailable } from '../audio/demoTracks';
 import { AudioError, toAudioError } from '../audio/errors';
-import { withoutCoverArt } from '../audio/flac';
 import { openMicrophone, openTabAudio, playBuffer, playMediaUrl } from '../audio/sources';
 import { scoreFromMix, scoreFromStems } from '../audio/score/loadScore';
 import type { Score } from '../audio/score/score';
 import { summarise } from '../audio/score/songMap';
 import { renderProofSong } from '../audio/synth/proofSong';
 import { renderDemoLoop } from '../audio/synth/renderLoop';
+import { useLibrary } from '../library/library';
+import { onSongEnded, startPlayer } from '../library/player';
+import { restoreLibrary } from '../library/library';
+import { setSongColours } from '../settings/bindings';
 import { useAppStore } from './appStore';
 
 const AUDIO_EXTENSIONS = /\.(mp3|wav|ogg|oga|m4a|aac|flac|webm|opus)$/i;
@@ -19,6 +22,8 @@ const store = () => useAppStore.getState();
 export function prepareAudio(): void {
   audioEngine.startLoop();
   audioEngine.setEndedHandler(onLiveSourceEnded);
+  startPlayer();
+  void restoreLibrary();
   audioEngine.setScoreHandler((score) => {
     // A song going away also abandons anything still being learned about it.
     if (!score) {
@@ -54,14 +59,16 @@ let scoreRequest = 0;
 const SECTION_RESTART_S = 1.5;
 
 /** Learns the song in the background, while it's already playing. */
-function learnSong(analyse: () => Promise<Score>): void {
+export function learnSong(analyse: () => Promise<Score>, learned?: (score: Score) => void): void {
   const request = ++scoreRequest;
   store().setLearning(true);
   // A frame's grace first, so the first beats aren't competing with the analysis.
   window.setTimeout(() => {
     analyse()
       .then((score) => {
-        if (request === scoreRequest) audioEngine.setScore(score);
+        if (request !== scoreRequest) return;
+        audioEngine.setScore(score);
+        learned?.(score);
       })
       .catch(() => undefined) // Without a score the app simply reacts live.
       .finally(() => {
@@ -91,9 +98,11 @@ export function jumpSection(step: 1 | -1): void {
   if (target !== undefined) seekTo(target);
 }
 
-async function decodeFile(file: File): Promise<AudioBuffer> {
-  const decoder = new OfflineAudioContext(1, 1, 44100);
-  return decoder.decodeAudioData(await file.arrayBuffer());
+/** Leaving the music library for a demo or live input: its song no longer owns the picture. */
+function forgetSong(): void {
+  useLibrary.getState().setNowPlaying(null);
+  useLibrary.getState().setComingUp(null);
+  setSongColours(null);
 }
 
 export function toggleLiving(): void {
@@ -124,8 +133,8 @@ export async function selectDemo(id: string): Promise<void> {
   }).then((ok) => {
     if (ok && analyse) learnSong(analyse);
     if (ok) {
+      forgetSong();
       store().setSource({ kind: 'demo', id: track.id, title: track.title });
-      store().setQueue(null);
     }
   });
 }
@@ -134,58 +143,14 @@ export function isAudioFile(file: File): boolean {
   return file.type.startsWith('audio/') || AUDIO_EXTENSIONS.test(file.name);
 }
 
-let queueFiles: File[] = [];
-
-/** Plays what was dropped or picked; several files become a queue, in track-number order. */
-export async function loadFiles(files: File[]): Promise<void> {
-  const audio = files.filter(isAudioFile);
-  if (audio.length === 0) {
-    store().showNotice({
-      tone: 'error',
-      title: files.length > 1 ? 'No audio files there' : 'That isn’t an audio file',
-      body: 'Try MP3, WAV or OGG files.',
-    });
-    return;
-  }
-  queueFiles = audio.sort((a, b) =>
-    a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }),
-  );
-  await playQueueItem(0);
-}
-
-async function playQueueItem(index: number): Promise<void> {
-  const picked = queueFiles[index];
-  if (!picked) return;
-  const file = await withoutCoverArt(picked);
-  const url = URL.createObjectURL(file);
-  const queued = queueFiles.length > 1;
-  const ok = await switchSource(file.name, (ctx) =>
-    playMediaUrl(ctx, url, { revokeOnStop: true, loop: !queued }),
-  );
-  if (ok) {
-    learnSong(() => decodeFile(file).then(scoreFromMix));
-    store().setSource({ kind: 'file', name: file.name });
-    store().setQueue(queued ? { index, length: queueFiles.length } : null);
-  } else {
-    URL.revokeObjectURL(url);
-  }
-}
-
-/** Moves through the queue, wrapping at both ends. */
-export function skipTrack(step: number): void {
-  const queue = store().queue;
-  if (!queue) return;
-  void playQueueItem((queue.index + step + queue.length) % queue.length);
-}
-
 export async function enableMic(): Promise<void> {
   store().setMic('requesting');
   const device = store().micDevice;
   const ok = await switchSource('Microphone', (ctx) => openMicrophone(ctx, device));
   if (ok) {
     store().setMic('live');
+    forgetSong();
     store().setSource({ kind: 'mic' });
-    store().setQueue(null);
   } else if (store().mic === 'requesting') {
     store().setMic('idle');
   }
@@ -197,8 +162,8 @@ export async function enableMic(): Promise<void> {
 export async function enableTabAudio(): Promise<void> {
   const ok = await switchSource('Tab audio', openTabAudio);
   if (ok) {
+    forgetSong();
     store().setSource({ kind: 'tab' });
-    store().setQueue(null);
   }
 }
 
@@ -206,7 +171,7 @@ export async function enableTabAudio(): Promise<void> {
 function onLiveSourceEnded(): void {
   const kind = store().source?.kind;
   if (kind === 'file') {
-    skipTrack(1);
+    onSongEnded();
     return;
   }
   store().setSource(null);
@@ -263,15 +228,16 @@ export function toggleMute(): void {
   audioEngine.setVolume(nextMuted ? 0 : restored);
 }
 
-async function switchSource(
+export async function switchSource(
   label: string,
   load: Parameters<typeof audioEngine.play>[0],
+  options?: PlayOptions,
 ): Promise<boolean> {
   store().setLoading(label);
   store().dismissNotice();
   scoreRequest++;
   try {
-    const applied = await audioEngine.play(load);
+    const applied = await audioEngine.play(load, options);
     if (applied) store().setPaused(false);
     if (applied && label !== 'Microphone' && store().mic !== 'idle') store().setMic('idle');
     return applied;

@@ -34,7 +34,8 @@ export function CastList() {
       dots.current.forEach((dot, i) => {
         const level = audioFeatures.cast[i] ?? 0;
         dot?.style.setProperty('opacity', (0.25 + 0.75 * level).toFixed(2));
-        if (!reducedMotion) dot?.style.setProperty('scale', (0.75 + 0.6 * level).toFixed(2));
+        if (!reducedMotion)
+          dot?.style.setProperty('transform', `scale(${(0.75 + 0.6 * level).toFixed(2)})`);
       });
     });
   }, [reducedMotion]);

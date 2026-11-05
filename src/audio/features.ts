@@ -99,6 +99,8 @@ export interface AudioFeatures {
   hang: number;
   /** 0–1: inside the section a drop opened. */
   world: number;
+  /** 0–1–0 across a crossfade from one song to the next. */
+  handoff: number;
   /** Which part of the song this is; sections that come back share a number. -1 if unknown. */
   sectionPart: number;
 
@@ -176,6 +178,7 @@ export function createAudioFeatures(): AudioFeatures {
     tension: 0,
     hang: 0,
     world: 0,
+    handoff: 0,
     sectionPart: -1,
     sustain: 0,
     noteLevel: 0,

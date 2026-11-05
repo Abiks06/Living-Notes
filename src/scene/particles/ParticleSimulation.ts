@@ -25,7 +25,12 @@ import { Spectrogram } from '../Spectrogram';
 import { Wavefront } from '../Wavefront';
 import { particleFragmentShader, particleVertexShader } from '../shaders/particles.glsl';
 import { positionShader, velocityShader } from '../shaders/simulation.glsl';
-import { createLorenzTargets, createTextTargets, fillTextTargets } from './shapeTextures';
+import {
+  createLorenzTargets,
+  createTextTargets,
+  fillTextTargets,
+  fillTextTargetsGently,
+} from './shapeTextures';
 import { REFERENCE_COUNT } from './tiers';
 import { createRenderUniforms, createSimulationUniforms } from './uniforms';
 
@@ -34,6 +39,8 @@ export type SimulationPrecision = 'float' | 'half';
 const MAX_STEP_S = 1 / 30;
 /** Palette changes ease in over roughly this long. */
 const PALETTE_EASE_S = 0.35;
+/** Between songs the colours drift with the crossfade instead of switching. */
+const HANDOFF_EASE_S = 1.5;
 const TEMPO_LOCK_EASE_S = 0.8;
 /** Light takes about a fifth of a second from core to edge: long enough to see it travel. */
 const WAVE_DELAY_S = 0.08;
@@ -314,7 +321,8 @@ export class ParticleSimulation {
     render.uExposure.value = director.exposure;
     render.uPointScale.value = look.pointSize;
     // First frame snaps (a shared link opens in its palette); later changes ease.
-    const ease = this.hasRendered ? 1 - Math.exp(-frame.dt / PALETTE_EASE_S) : 1;
+    const paletteEase = audio.handoff > 0 ? HANDOFF_EASE_S : PALETTE_EASE_S;
+    const ease = this.hasRendered ? 1 - Math.exp(-frame.dt / paletteEase) : 1;
     if (!this.hasRendered) {
       this.baseLow.copy(look.palette[0]);
       this.baseMid.copy(look.palette[1]);
@@ -401,13 +409,18 @@ export class ParticleSimulation {
   setFlashWord(word: string): void {
     if (word === this.flashText) return;
     this.flashText = word;
-    if (this.flashTargets) {
-      fillTextTargets(this.flashTargets.image.data as Float32Array, word);
-      this.flashTargets.needsUpdate = true;
-    } else {
+    if (!this.flashTargets) {
       this.flashTargets = createTextTargets(this.textTargets.image.width, word);
+      this.renderer.initTexture(this.flashTargets);
+      return;
     }
-    this.renderer.initTexture(this.flashTargets);
+    const targets = this.flashTargets;
+    void fillTextTargetsGently(targets.image.data as Float32Array, word).then(() => {
+      // A newer word may have started while this one was being filled in.
+      if (word !== this.flashText) return;
+      targets.needsUpdate = true;
+      this.renderer.initTexture(targets);
+    });
   }
 
   /** Re-rasterizes the wordmark target. Particles flow to the new word on their own. */

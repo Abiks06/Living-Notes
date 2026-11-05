@@ -79,7 +79,9 @@ void main() {
   float now = exp(-pow((u - HEAD) / 0.012, 2.0));
 
   vec4 view = modelViewMatrix * vec4(uFocus, 1.0);
-  float width = (0.012 + 0.075 * level * (1.0 - age)) * mix(1.0, 0.4, ahead) + 0.09 * level * now;
+  // Thin on the steep parts, or the strokes of a tight curve pile up on each other.
+  float steep = 1.0 / (1.0 + abs(heading.y) * 14.0);
+  float width = (0.012 + 0.06 * level * (1.0 - age)) * mix(1.0, 0.4, ahead) * steep + 0.09 * level * now;
   view.xy += here + across * side * width;
   gl_Position = projectionMatrix * view;
 
@@ -88,7 +90,9 @@ void main() {
   vAlong = u;
   vHeat = clamp(level * (1.0 - age) + now, 0.0, 1.0);
   float trail = ahead > 0.5 ? 0.5 * (1.0 - age) : pow(1.0 - age, 0.9);
-  vLight = smoothstep(0.02, 0.2, level) * trail * (1.0 - leap) * uFade;
+  // The sketch ahead only shows held notes: dashes up a steep slope just read as a comb.
+  float sketch = mix(1.0, 1.0 - smoothstep(0.03, 0.09, abs(heading.y)), ahead);
+  vLight = smoothstep(0.02, 0.2, level) * trail * (1.0 - leap) * sketch * uFade;
 }
 `;
 

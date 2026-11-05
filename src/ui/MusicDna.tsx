@@ -50,15 +50,13 @@ export function MusicDna() {
 
   if (!source) return null;
   return (
-    <p className="dna" ref={root} data-locked="false" title="What Resonance is hearing">
-      <span className="dna__tempo">
-        <span className="dna__lock" ref={dot} aria-hidden="true" />
+    <p className="hearing" ref={root} data-locked="false" title="What Resonance is hearing">
+      <span className="hearing__tempo">
+        <span className="hearing__lock" ref={dot} aria-hidden="true" />
         <span ref={tempo}>– BPM</span>
       </span>
       <span ref={note}>–</span>
-      <span className="dna__vibe" ref={vibe}>
-        {VIBES[0]}
-      </span>
+      <span ref={vibe}>{VIBES[0]}</span>
     </p>
   );
 }

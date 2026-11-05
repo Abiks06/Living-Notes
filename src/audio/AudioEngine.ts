@@ -11,6 +11,9 @@ import { MAX_DECIBELS, MIN_DECIBELS } from './tone';
 
 const FADE_IN_S = 0.18;
 const FADE_OUT_S = 0.12;
+const FADE_STEPS = 32;
+/** How far the form draws in as one song hands over to the next. */
+const HANDOFF_BREATH = 0.55;
 const MAX_DT = 0.1;
 
 interface ActivePlayback {
@@ -19,6 +22,21 @@ interface ActivePlayback {
 }
 
 export type FrameListener = (dt: number) => void;
+
+export interface PlayOptions {
+  /** Blend from the song before over this long, rather than a quick swap. */
+  fadeS?: number;
+  /** What's already known about this song, so it's performed from its first frame. */
+  score?: Score | null;
+}
+
+/** Equal power, so two songs blending don't dip in the middle. */
+function fadeCurve(rising: boolean, from = 1): Float32Array {
+  return Float32Array.from({ length: FADE_STEPS }, (_, i) => {
+    const x = i / (FADE_STEPS - 1);
+    return from * (rising ? Math.sin((x * Math.PI) / 2) : Math.cos((x * Math.PI) / 2));
+  });
+}
 
 /**
  * Owns the AudioContext and analysis graph, and refreshes `audioFeatures` once per frame
@@ -57,6 +75,9 @@ export class AudioEngine {
   private frameId = 0;
   private lastFrame = 0;
   private volume = 1;
+  private handoffLeft = 0;
+  private handoffTotal = 1;
+  private handoffPresence = 1;
 
   /** Starts the fallback rAF loop, unless an external clock (the scene) is attached. */
   startLoop(): void {
@@ -128,7 +149,10 @@ export class AudioEngine {
    * Swaps in a new source with a short crossfade. If another `play` call starts while
    * this one is still loading, the stale result is discarded.
    */
-  async play(load: (ctx: AudioContext) => Promise<PlaybackHandle>): Promise<boolean> {
+  async play(
+    load: (ctx: AudioContext) => Promise<PlaybackHandle>,
+    { fadeS = 0, score = null }: PlayOptions = {},
+  ): Promise<boolean> {
     const ctx = this.ensureContext();
     const analyser = this.analyser;
     const speakers = this.speakers;
@@ -144,10 +168,10 @@ export class AudioEngine {
       return false;
     }
 
-    this.fadeOutCurrent();
+    const blending = fadeS > 0 && this.current !== null;
+    this.fadeOutCurrent(blending ? fadeS : FADE_OUT_S);
     const fader = ctx.createGain();
-    fader.gain.setValueAtTime(0, ctx.currentTime);
-    fader.gain.linearRampToValueAtTime(1, ctx.currentTime + FADE_IN_S);
+    fader.gain.setValueCurveAtTime(fadeCurve(true), ctx.currentTime, blending ? fadeS : FADE_IN_S);
     handle.node.connect(fader);
     fader.connect(analyser);
     if (this.pitchAnalyser) fader.connect(this.pitchAnalyser);
@@ -156,14 +180,21 @@ export class AudioEngine {
 
     const playback = { handle, fader };
     this.current = playback;
-    this.setScore(null);
+    this.setScore(score);
     // Live sources can end on their own ("Stop sharing", mic unplugged).
     handle.onEnded?.(() => {
       if (this.current !== playback) return;
       this.stop();
       this.endedHandler?.();
     });
-    this.extractor?.reset(handle.acoustic === true);
+    // A blend carries straight on: what's been learned about the room and level still holds.
+    if (blending) {
+      this.handoffTotal = fadeS;
+      this.handoffLeft = fadeS;
+      this.handoffPresence = audioFeatures.presence;
+    } else {
+      this.extractor?.reset(handle.acoustic === true);
+    }
     return true;
   }
 
@@ -208,6 +239,7 @@ export class AudioEngine {
       audioFeatures.world = 0;
       audioFeatures.sectionPart = -1;
       this.performScore();
+      this.performHandoff(dt);
       readCast(audioFeatures, audioFeatures.cast);
       if (this.solo) soloActor(audioFeatures, this.solo);
     } else {
@@ -226,21 +258,33 @@ export class AudioEngine {
     this.player.apply(this.score, transport.currentTime() - delay, audioFeatures);
   }
 
-  private fadeOutCurrent(): void {
+  /** Carries the picture from one song to the next, so nothing about the change is a jump. */
+  private performHandoff(dt: number): void {
+    audioFeatures.handoff = 0;
+    if (this.handoffLeft <= 0) return;
+    this.handoffLeft = Math.max(0, this.handoffLeft - dt);
+    const x = 1 - this.handoffLeft / this.handoffTotal;
+    const eased = x * x * (3 - 2 * x);
+    audioFeatures.handoff = Math.sin(Math.PI * x);
+    audioFeatures.inhale = Math.max(audioFeatures.inhale, audioFeatures.handoff * HANDOFF_BREATH);
+    audioFeatures.presence += (this.handoffPresence - audioFeatures.presence) * (1 - eased);
+    audioFeatures.intensity = audioFeatures.presence;
+  }
+
+  private fadeOutCurrent(seconds = FADE_OUT_S): void {
     const playing = this.current;
     const ctx = this.ctx;
     this.current = null;
     if (!playing || !ctx) return;
     const { fader, handle } = playing;
     fader.gain.cancelScheduledValues(ctx.currentTime);
-    fader.gain.setValueAtTime(fader.gain.value, ctx.currentTime);
-    fader.gain.linearRampToValueAtTime(0, ctx.currentTime + FADE_OUT_S);
+    fader.gain.setValueCurveAtTime(fadeCurve(false, fader.gain.value), ctx.currentTime, seconds);
     window.setTimeout(
       () => {
         handle.stop();
         fader.disconnect();
       },
-      FADE_OUT_S * 1000 + 40,
+      seconds * 1000 + 40,
     );
   }
 

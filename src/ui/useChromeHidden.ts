@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
+import { useLibrary } from '../library/library';
 import { isShortcutKey } from '../lib/keyboard';
 import { useAppStore } from '../state/appStore';
 
 const IDLE_MS = 3000;
 /** Pointer over any of these keeps the UI up: you're reading or about to click. */
-const INTERACTIVE = '.chrome, .studio, .toast, .mic-notice, .perf-overlay';
+const INTERACTIVE = '.chrome, .studio, .library, .toast, .mic-notice, .perf-overlay';
+const OPEN_MENU = '.menu';
 
 /**
  * Whether the floating UI should fade out: after 3 s with no input (unless the pointer
@@ -14,6 +16,7 @@ const INTERACTIVE = '.chrome, .studio, .toast, .mic-notice, .perf-overlay';
 export function useChromeHidden(): boolean {
   const phase = useAppStore((state) => state.phase);
   const studioOpen = useAppStore((state) => state.studioOpen);
+  const libraryOpen = useLibrary((state) => state.open);
   const notice = useAppStore((state) => state.notice);
   const mic = useAppStore((state) => state.mic);
   const manual = useAppStore((state) => state.uiHiddenManual);
@@ -25,10 +28,20 @@ export function useChromeHidden(): boolean {
     const wake = () => {
       setIdle(false);
       window.clearTimeout(timer);
-      if (!overUi) timer = window.setTimeout(() => setIdle(true), IDLE_MS);
+      if (!overUi) {
+        timer = window.setTimeout(() => {
+          // An open menu is still in use, whether or not anything has touched it lately.
+          if (document.querySelector(OPEN_MENU)) wake();
+          else setIdle(true);
+        }, IDLE_MS);
+      }
     };
     const onPointer = (event: PointerEvent) => {
-      overUi = event.target instanceof Element && event.target.closest(INTERACTIVE) !== null;
+      // A finger lifts, so unlike a mouse it can't be resting on a control.
+      overUi =
+        event.pointerType === 'mouse' &&
+        event.target instanceof Element &&
+        event.target.closest(INTERACTIVE) !== null;
       wake();
     };
     const onKey = (event: KeyboardEvent) => {
@@ -64,6 +77,9 @@ export function useChromeHidden(): boolean {
   }, []);
 
   const needsAttention =
-    studioOpen || notice !== null || ['denied', 'missing', 'busy', 'unsupported'].includes(mic);
+    studioOpen ||
+    libraryOpen ||
+    notice !== null ||
+    ['denied', 'missing', 'busy', 'unsupported'].includes(mic);
   return manual || (idle && phase === 'running' && !needsAttention);
 }

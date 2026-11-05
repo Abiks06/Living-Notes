@@ -89,6 +89,7 @@ export class IdlePreview {
     out.hang = 0;
     out.world = 0;
     out.sectionPart = -1;
+    out.handoff = 0;
     out.sustain = 0;
     out.noteLevel = 0;
     out.noteHit = 0;

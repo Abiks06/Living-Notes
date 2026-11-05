@@ -67,9 +67,7 @@ function FallbackBackdrop({ reason }: { reason: string }) {
     <div className="stage stage--fallback">
       <div className="fallback-card" role="status">
         <p className="fallback-card__title">Visuals unavailable on this device</p>
-        <p className="fallback-card__body">
-          {reason} The audio analysis still runs, so the spectrum below stays live.
-        </p>
+        <p className="fallback-card__body">{reason} Your music still plays.</p>
       </div>
     </div>
   );

@@ -50,6 +50,9 @@ export interface Score extends Readonly<Form>, Voices {
   readonly downbeat: number;
   readonly barConfidence: number;
   readonly grooveScale: number;
+  /** Where sound really starts and stops, in seconds, ignoring silence at either end. */
+  readonly musicStart: number;
+  readonly musicEnd: number;
   /** Which part of the song each section is. Sections that come back share a number. */
   readonly sectionParts: Int16Array;
 }
@@ -77,6 +80,8 @@ const STEADINESS = 5;
 const GRID_STEPS = 120;
 const GRID_STEP = 0.0001;
 const CONFIDENCE_GAIN = 1.25;
+/** Envelopes follow loudness on a compressed scale, so this is roughly 45 dB down. */
+const AUDIBLE = 0.04;
 /** The share of the upper mids at which a moment counts fully as a hit. */
 const FULL_HIT_SHARE = 0.4;
 /** How close to the song's tallest hits a snare has to come. */
@@ -533,11 +538,18 @@ export function buildScore(
 
   const bar = findBar(tempo, hits.kick, hits.snare, duration);
   const form = readForm(env, frames, tempo.bpm, tempo.offset, tempo.confidence, hits.kick);
+  const audible = (frame: number) => LANES.some((lane) => (env[lane][frame] ?? 0) >= AUDIBLE);
+  let firstSound = 0;
+  while (firstSound < frames - 1 && !audible(firstSound)) firstSound++;
+  let lastSound = frames - 1;
+  while (lastSound > firstSound && !audible(lastSound)) lastSound--;
   const stem = trueStems || !mix;
   const melody = stem ? findMelody(lanes.lead, sampleRate, duration) : voices.line;
   const sung = melody.filter((note) => note > 0).sort();
   return {
     duration,
+    musicStart: firstSound / SCORE_RATE,
+    musicEnd: lastSound / SCORE_RATE,
     trueStems,
     env,
     hits,

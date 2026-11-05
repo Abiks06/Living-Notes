@@ -1,41 +1,74 @@
+import { useState } from 'react';
+import {
+  addFolderFiles,
+  canRememberFolder,
+  pickFolder,
+  reopenFolder,
+  useLibrary,
+} from '../library/library';
+import { ensureStarted, startExperience } from '../state/actions';
 import { useAppStore } from '../state/appStore';
-import { startExperience } from '../state/actions';
-import { PlayIcon } from './icons';
 
-/** Full-screen click target over the already-animating preview. */
+/** The first screen: one thing to do, and the living cloud behind it. */
 export function StartOverlay() {
   const phase = useAppStore((state) => state.phase);
-  const gpu = useAppStore((state) => state.gpu);
+  const saved = useLibrary((state) => state.saved);
+  const [problem, setProblem] = useState('');
   if (phase !== 'intro') return null;
 
-  // State the real simulated count, never a rounded-up claim.
-  const tagline =
-    gpu.state === 'ready'
-      ? `${gpu.particles.toLocaleString('en-US')} GPU particles, played by your music.`
-      : 'A GPU particle cloud, played by your music.';
+  const enter = () => {
+    if (!ensureStarted()) return false;
+    useLibrary.getState().setOpen(true);
+    return true;
+  };
+  const failed = () => setProblem('That folder couldn’t be opened.');
+
+  const open = () => {
+    setProblem('');
+    // Asked for first: the browser only allows it straight from the click.
+    if (saved) {
+      const opening = reopenFolder();
+      enter();
+      opening.catch(failed);
+      return;
+    }
+    if (!canRememberFolder()) {
+      document.querySelector<HTMLInputElement>('#start-folder')?.click();
+      return;
+    }
+    pickFolder()
+      .then((picked) => {
+        if (picked) enter();
+      })
+      .catch(failed);
+  };
 
   return (
-    <div className="start-overlay" onClick={() => startExperience()}>
-      <div className="start-overlay__content">
-        <h1 className="start-overlay__title">Resonance</h1>
-        <p className="start-overlay__tagline">{tagline}</p>
-        <button
-          type="button"
-          className="start-button"
-          autoFocus
-          onClick={(event) => {
-            event.stopPropagation();
-            startExperience();
-          }}
-        >
-          <span className="start-button__ring" aria-hidden="true" />
-          <PlayIcon width={22} height={22} />
-          <span>Click to start</span>
-        </button>
-        <p className="start-overlay__hint">
-          Sound on · or pick a track, your mic, or drop a file below
-        </p>
-      </div>
+    <div className="start">
+      <h1 className="start__title">Resonance</h1>
+      <p className="start__line">Your music, alive.</p>
+      <button type="button" className="start__open" autoFocus onClick={open}>
+        {saved ? `Open ${saved}` : 'Open your music folder'}
+      </button>
+      <button type="button" className="start__demo" onClick={() => startExperience()}>
+        Try a demo
+      </button>
+      <p className="start__note" role={problem ? 'alert' : undefined}>
+        {problem || 'Your music stays on this device.'}
+      </p>
+      <input
+        id="start-folder"
+        type="file"
+        hidden
+        multiple
+        // A non-standard attribute, but every browser supports it.
+        {...{ webkitdirectory: '' }}
+        onChange={(event) => {
+          const files = Array.from(event.target.files ?? []);
+          event.target.value = '';
+          if (files.length > 0 && enter()) void addFolderFiles(files);
+        }}
+      />
     </div>
   );
 }

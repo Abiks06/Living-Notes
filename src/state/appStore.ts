@@ -8,7 +8,7 @@ export type Phase = 'intro' | 'running';
 
 export type ActiveSource =
   | { kind: 'demo'; id: string; title: string }
-  | { kind: 'file'; name: string }
+  | { kind: 'file'; name: string; title?: string; artist?: string }
   | { kind: 'mic' }
   | { kind: 'tab' };
 
@@ -48,8 +48,6 @@ interface AppState {
   mic: MicStatus;
   /** Chosen input; null is the system default. */
   micDevice: string | null;
-  /** Position in a multi-file queue, when there is one. */
-  queue: { index: number; length: number } | null;
   /** The current song's shape, once it's been learned. */
   song: SongSummary | null;
   learning: boolean;
@@ -86,7 +84,6 @@ interface AppState {
   setLoading: (label: string | null) => void;
   setMic: (mic: MicStatus) => void;
   setMicDevice: (micDevice: string | null) => void;
-  setQueue: (queue: AppState['queue']) => void;
   setSong: (song: SongSummary | null) => void;
   setLearning: (learning: boolean) => void;
   setSolo: (solo: Actor | null) => void;
@@ -112,14 +109,13 @@ export const useAppStore = create<AppState>()((set) => ({
   perfOverlay: false,
   uiHiddenManual: false,
   lounge: false,
-  recording: { state: 'idle', elapsed: 0, seconds: 10 },
-  capture: { seconds: 10, aspect: 'window' },
+  recording: { state: 'idle', elapsed: 0, seconds: 15 },
+  capture: { seconds: 15, aspect: 'window' },
   captureFraming: 1,
   source: null,
   loading: null,
   mic: 'idle',
   micDevice: null,
-  queue: null,
   song: null,
   learning: false,
   solo: null,
@@ -144,7 +140,6 @@ export const useAppStore = create<AppState>()((set) => ({
   setLoading: (loading) => set({ loading }),
   setMic: (mic) => set({ mic }),
   setMicDevice: (micDevice) => set({ micDevice }),
-  setQueue: (queue) => set({ queue }),
   setSong: (song) => set({ song }),
   setLearning: (learning) => set({ learning }),
   setSolo: (solo) => set({ solo }),

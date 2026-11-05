@@ -15,6 +15,8 @@ function createTargetTexture(size: number, data: Float32Array): DataTexture {
   return texture;
 }
 
+/** About 2 ms of work: floats in the target array, four to a particle. */
+const GENTLE_SLICE = 4 * 16384;
 const CANVAS_WIDTH = 1024;
 const CANVAS_HEIGHT = 220;
 const FONT_PX = 150;
@@ -52,14 +54,19 @@ function rasterizeWord(word: string): { filled: number[]; scale: number } | null
 }
 
 /** Writes one target per particle, sampled from the word's filled pixels. */
-export function fillTextTargets(data: Float32Array, word: string): void {
-  let raster = rasterizeWord(word);
+function rasterWithFallback(word: string) {
+  const raster = rasterizeWord(word);
   // A word of glyphs this device can't draw would otherwise collapse to a single point.
-  if (raster?.filled.length === 0) raster = rasterizeWord(DEFAULT_WORD);
-  if (!raster) return;
-  const { filled, scale } = raster;
+  return raster?.filled.length === 0 ? rasterizeWord(DEFAULT_WORD) : raster;
+}
 
-  for (let i = 0; i < data.length; i += 4) {
+function fillRange(
+  data: Float32Array,
+  from: number,
+  to: number,
+  { filled, scale }: NonNullable<ReturnType<typeof rasterizeWord>>,
+): void {
+  for (let i = from; i < to; i += 4) {
     const pixel = filled[Math.floor(Math.random() * filled.length)] ?? 0;
     const x = (pixel % CANVAS_WIDTH) + Math.random();
     const y = Math.floor(pixel / CANVAS_WIDTH) + Math.random();
@@ -67,6 +74,24 @@ export function fillTextTargets(data: Float32Array, word: string): void {
     data[i + 1] = -(y - CANVAS_HEIGHT / 2) * scale;
     data[i + 2] = (Math.random() - 0.5) * 0.35;
     data[i + 3] = 1;
+  }
+}
+
+export function fillTextTargets(data: Float32Array, word: string): void {
+  const raster = rasterWithFallback(word);
+  if (raster) fillRange(data, 0, data.length, raster);
+}
+
+/**
+ * The same, a slice per frame, for a word that's needed during a song: doing it all at once takes
+ * several frames' worth of time, which would show as a stutter in the music's visuals.
+ */
+export async function fillTextTargetsGently(data: Float32Array, word: string): Promise<void> {
+  const raster = rasterWithFallback(word);
+  if (!raster) return;
+  for (let from = 0; from < data.length; from += GENTLE_SLICE) {
+    fillRange(data, from, Math.min(data.length, from + GENTLE_SLICE), raster);
+    await new Promise((resolve) => window.setTimeout(resolve, 16));
   }
 }
 

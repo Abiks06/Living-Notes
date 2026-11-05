@@ -15,6 +15,8 @@ const shows = new Map<number, ReturnType<typeof nextShow>>();
 /** Short passages aren't worth a new scene, unless a drop says otherwise. */
 const MIN_SHOW_S = 8;
 const DROP_LANDED = 0.9;
+/** How far up the climb the title starts to form. */
+const TITLE_FROM = 0.3;
 
 /** Feeds scene selection into the director and advances it, right after audio analysis. */
 export function SceneDriver() {
@@ -24,6 +26,7 @@ export function SceneDriver() {
   const source = useAppStore((state) => state.source);
   const mounted = useRef(false);
   const showClock = useRef({ part: -1, held: MIN_SHOW_S });
+  const wordSpent = useRef(false);
 
   useEffect(() => {
     // The first scene (e.g. from a share link) appears directly; later changes fly over.
@@ -35,6 +38,7 @@ export function SceneDriver() {
   useEffect(() => {
     auto.newTrack();
     shows.clear();
+    wordSpent.current = false;
     showClock.current = { part: -1, held: MIN_SHOW_S };
   }, [source]);
 
@@ -51,6 +55,14 @@ export function SceneDriver() {
     partMemory.update(dt, audioFeatures);
 
     const settings = useSettings.getState();
+    // Whatever the mode, a song's first big moment smashes its own title.
+    const titled = source?.kind === 'file' && Boolean(source.title);
+    if (titled && !settings.autoDirector && !reducedMotion && !wordSpent.current) {
+      if (audioFeatures.scored && audioFeatures.tension >= TITLE_FROM) {
+        wordSpent.current = true;
+        sceneDirector.flashWord(sceneByKey(settings.scene), audioFeatures.snareCount, true);
+      }
+    }
     const directing = settings.autoDirector && audioFeatures.live;
     if (directing && !reducedMotion && auto.takeBuildWord(audioFeatures)) {
       sceneDirector.flashWord(sceneByKey(settings.scene), audioFeatures.snareCount, true);

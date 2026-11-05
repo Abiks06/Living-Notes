@@ -13,6 +13,7 @@ import { HalfFloatType, Vector2, Vector3 } from 'three';
 import { audioFeatures } from '../../audio/features';
 import { useReducedMotion } from '../../lib/useMediaQuery';
 import { liveLook } from '../../settings/bindings';
+import { useSettings } from '../../settings/settingsStore';
 import { useAppStore } from '../../state/appStore';
 import { partMemory } from '../partLook';
 import { sceneDirector } from '../SceneDirector';
@@ -50,6 +51,7 @@ const ORIGINAL_DROP_BLOOM = 0.8;
 export function PostFX() {
   const camera = useThree((state) => state.camera);
   const reducedMotion = useReducedMotion();
+  const fringe = useSettings((state) => state.aberration > 0);
   const motion = useRef({ previous: new Vector3(), damping: 0 });
   const trail = useRef<TrailEffect>(null);
   const atmosphere = useRef<AtmosphereEffect>(null);
@@ -118,7 +120,13 @@ export function PostFX() {
   });
 
   return (
-    <EffectComposer multisampling={0} frameBufferType={HalfFloatType}>
+    <EffectComposer
+      ref={(composer) => {
+        if (import.meta.env.DEV) Object.assign(window, { __composer: composer });
+      }}
+      multisampling={0}
+      frameBufferType={HalfFloatType}
+    >
       <Trail ref={trail} />
       <Bloom
         ref={bloom}
@@ -130,12 +138,18 @@ export function PostFX() {
       />
       <Atmosphere ref={atmosphere} />
       <Impact ref={impact} />
-      <ChromaticAberration
-        ref={aberration}
-        offset={offset.current}
-        radialModulation
-        modulationOffset={0.25}
-      />
+      {/* Colour fringing needs a pass of its own over the whole screen, a quarter of the frame on
+          integrated graphics, so it's only there for those who turn it up. */}
+      {fringe ? (
+        <ChromaticAberration
+          ref={aberration}
+          offset={offset.current}
+          radialModulation
+          modulationOffset={0.25}
+        />
+      ) : (
+        <></>
+      )}
       <Vignette offset={0.28} darkness={0.72} />
       <ToneMapping mode={ToneMappingMode.AGX} />
     </EffectComposer>

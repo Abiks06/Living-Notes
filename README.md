@@ -3,7 +3,7 @@
 **A browser-based audio-reactive visual synthesizer: up to 590,000 GPU particles that pulse, twist and sparkle to your music, in real time.**
 
 ![Resonance demo](docs/demo.gif)
-<!-- Placeholder: record a clip with the app's own "Record 10s" button, convert it to a GIF and save it as docs/demo.gif. -->
+<!-- Placeholder: record a clip with the app's own record button, convert it to a GIF and save it as docs/demo.gif. -->
 
 **[Live demo →](https://your-deployment-url.example)** <!-- Placeholder: replace after deploying. -->
 
@@ -25,6 +25,9 @@ No sign-up, no install. Click once and the scene is already moving.
 - **Hits travel:** light starts at the core and moves outward, so a sound visibly begins somewhere.
 - **Restraint:** quiet sections hold their light and motion back, right up to the downbeat, so the big ones have somewhere to go.
 - **Every instrument shows:** a song is sorted by how long its sounds last, into hits, notes and what holds, with no stems or model to download. Pads and held chords become an aurora across the room, coloured by the chord, and each new chord sweeps across it. Riffs and plucked lines strike strings at their own pitch: clean notes ring smooth, distortion breaks them into teeth, and each note also lights the particles at that height.
+- **A real music player:** open a music folder once and it's remembered, with search, shuffle, repeat, play next, a queue, media keys and lock-screen controls. Titles, artists, albums and cover art come from the files themselves. Nothing is uploaded.
+- **Songs flow into each other:** the next song is learned while this one plays, and silence at either end is trimmed. As one song hands over to the next the form draws in and opens again, and the colours drift to the new cover.
+- **The song's name on screen:** a title card opens each song, Up next appears before it ends, and a song's first big moment spells its title in particles for the drop to smash. Clips carry the title too.
 - **Musical memory:** the app works out which sections are the same part of the song coming back, and each part gets a look of its own: colour, how the particles swirl, the way the form turns and the width of the lens. A chorus returns looking as it did the first time, and in Morph with its own shape. In Auto-VJ a part also keeps its scene and palette.
 - **Song map:** the whole song on one strip, showing how big each section is, where it climbs and drops, and where pads, notes and hits sit. Click to jump anywhere, or press `[` and `]` to move by section.
 - **Cast list:** Drums, Bass, Pads, Riffs and Voice light up as they play. Tap one to leave only that part driving the picture, which shows what each one does on screen.
@@ -36,13 +39,13 @@ No sign-up, no install. Click once and the scene is already moving.
 - **A layer for each instrument:** kicks push outward, backbeats twist the structure one way and then the other, and hats shake a corona of fine stardust. In Nebula a heavy core throbs with the sub-bass, and a melody rises through it as three ribbons, drums or no drums. Terrain's peaks shed embers, and a landed word ripples with the voice.
 - **Phrasing:** Morph and Auto-VJ wait for the 1 once the bar is known, a half-time groove nods at half the tempo, and the camera sits in close for verses and pulls back for choruses.
 - **Mood:** intensity and brightness over a few seconds set a label for the vibe and a drifting backdrop, with bass rising from the floor, a voice crossing the sky and loud sections reaching the screen's edges. Auto-VJ picks looks to match: heavy drops get kinetic scenes and hot palettes, smooth grooves get fluid scenes and Velvet or Gold Dust, and beatless music stays off rigid grids.
-- **What it's hearing:** the dock shows the BPM, strongest note and vibe live, and a dash whenever it doesn't know.
+- **What it's hearing:** the Visuals menu shows the BPM, strongest note and vibe live, and a dash whenever it doesn't know.
 - **Lounge mode:** one key hides everything and turns the backdrop up until the screen works as a mood light.
 - **The word on the drop:** in Auto-VJ, a known song spells your word or the track's name in particles during the climb, and the drop smashes it. Live audio can't see a drop coming, so there the word follows it and shatters on the next snare.
 - **Onsets by register:** low hits (kick), mid hits (snare, piano attacks) and high hits (hats) are told apart by where the energy went.
 - **Tone:** spectral centroid (brightness), flatness (tonal or noisy), and pitch from a separate long-window FFT, with chord-change detection for music without drums.
 - **Live tempo and beat phase,** with an honest confidence: free-time music reports no pulse rather than inventing one.
-- Play/pause, seek, volume and mute for files and demos. A live spectrum strip.
+- One slim player bar: song and cover art, shuffle, previous, play, next, repeat, volume, and a thin seek line. Hover the line to open the song map. It all fades out after 3 s so the picture has the screen.
 
 **Visuals**
 
@@ -50,13 +53,13 @@ No sign-up, no install. Click once and the scene is already moving.
   - **Nebula:** a lumpy, breathing cloud of curl-noise filaments. Bass churns it, and bright sounds tighten its swirls.
   - **Sphere Pulse:** each frequency band drives its own latitude.
   - **Terrain:** a particle landscape made from a scrolling spectrogram.
-  - **Morph:** every 16 beats (or on a chord change, in music without a pulse) the cloud reforms as sphere → torus knot → "RESONANCE" → double helix → torus → Lorenz attractor. Pin any shape from the row under the scene picker, or **type your own word** in the Studio and it travels with your share link.
+  - **Morph:** every 16 beats (or on a chord change, in music without a pulse) the cloud reforms as sphere → torus knot → "RESONANCE" → double helix → torus → Lorenz attractor. Turn Auto off to pin any shape from the Visuals menu, or **type your own word** in the Studio and it travels with your share link.
   - **Cymatics:** the real physics of resonance. Particles behave like sand on a vibrating plate and settle on its Chladni nodal lines, and the note being played picks the figure.
 - **Transitions never hard-cut.** Particles fly from one formation to the next.
 - **The music plays the scene:** kicks push outward, snares send a shockwave ring, hats re-roll the sparkle, brightness shifts colour, section loudness sets scale, and rotation locks to the tempo.
 - **A lens, not dots:** depth of field with soft bokeh discs, and fast particles stretch into streaks along their motion.
 - **Post-processing:** feedback trails, bloom, snare-driven chromatic aberration, a palette-tinted atmosphere that swells with sub-bass, vignette and AgX tone mapping.
-- **Auto-VJ** (press `V`): changes scene and palette at drops, breakdowns and every 32 beats, for a second screen at a party.
+- **Auto** (on by default, press `V`): scenes and palettes follow the music, changing at drops and with each part of a song. Picking a scene takes over.
 - **Interactive:**
   - Drag to orbit and scroll to zoom, with an auto-orbit that follows the mids.
   - Moving the cursor carves a wake through the cloud.
@@ -72,7 +75,7 @@ No sign-up, no install. Click once and the scene is already moving.
 
 **Capture and performance**
 
-- **Record a clip:** canvas plus audio at a steady 30 FPS to a downloadable MP4 (WebM on browsers that can't write MP4), with a countdown. Choose 10, 15 or 30 seconds and a window, 16:9, 9:16 or 1:1 frame; cropped clips show a frame guide and pull the camera back while recording.
+- **Record a clip:** canvas plus audio at a steady 30 FPS to a downloadable MP4 (WebM on browsers that can't write MP4), with a countdown. Choose 15, 30, 45 or 60 seconds and a window, 16:9, 9:16 or 1:1 frame; cropped clips show a frame guide and pull the camera back while recording.
 - **Snapshot PNG** at the same framing.
 - **Particle count is picked by a GPU benchmark** (65k / 262k / 590k) and remembered per GPU. It uses timer queries only, so measuring never stalls a frame.
 - **Adaptive quality:** a short benchmark picks the render resolution and particle count together. If FPS still sags over a 3 s window, resolution drops first (under 54 FPS), and particles go only if it stays under 45 at 1×.
@@ -91,10 +94,11 @@ No sign-up, no install. Click once and the scene is already moving.
 | `1`–`5` | Switch scene                 | `Space`                     | Play / pause          |
 | `C`     | Studio panel                 | `M`                         | Mute                  |
 | `F`     | Stats overlay                | `H`                         | Hide / show interface |
-| `V`     | Auto-VJ                      | `N` / `P`                   | Next / previous track |
+| `V`     | Auto                         | `N` / `P`                   | Next / previous track |
 | `Esc`   | Close panel / show interface | Hold still, or `Shift`-drag | Gravity well          |
 | `L`     | Lounge mode                  | `B`                         | Compare with original |
-| `[` `]` | Previous or next section     |                             |                       |
+| `[` `]` | Previous or next section     | `Q`                         | Music library         |
+| `S`     | Shuffle                      | `R`                         | Repeat                |
 
 ---
 
@@ -161,7 +165,7 @@ src/
   settings/     schema, palettes, looks, store, URL codec + sync
   perf/         frame-rate guard, GPU timer, monitor
   recording/    MediaRecorder clip capture
-  ui/           dock, transport, scene picker, studio panel, overlays, notices
+  ui/           player bar, song map, visuals menu, library, studio panel, overlays, notices
 ```
 
 </details>
@@ -275,6 +279,8 @@ Seven more songs from other genres, house, EDM, metal, classic rock, post-rock a
 
 The melody line needed the same treatment. Reading pitch moment by moment hopped between harmonics, which drew a dense zigzag on real songs and matched Afterglow's true melody exactly only 2% of the time. It's now one path through the whole song, in which every leap has to earn its place, read from the centre of the mix. That covers 85% of the melody, up from 59%, is exact 44% of the time, and leaps about a third as often as it first did on real songs.
 
+The biggest performance fix wasn't in the graphics at all. On integrated graphics, a third of frames arrived late even though the GPU had time to spare, and switching things off one at a time pointed at the controls. Faded out at zero opacity, they were still being composited over the stage on every frame, along with a small spectrum meter redrawn on a GPU canvas. Hiding them properly and moving the meter to the CPU took it to 0 late frames in over a thousand. Removing backdrop blur and making colour fringing optional cut work further, as fringing alone needed a whole extra pass over the screen.
+
 A clean bench still isn't a real room. On an actual laptop mic in a quiet room, the same gate sat wide open, because the synthetic fan differed from real input in three ways:
 
 - **Streams open on digital zeros.** Calibration learned the room as −120 dBFS, then climbed at 2 dB/s, so the gate stayed open for over half a minute. Silent frames no longer count, and calibration now averages power over 2 s, which outlasts a driver fading the stream in.
@@ -346,7 +352,7 @@ npm run build      # static site in dist/
 | Auto particle count | Benchmarked   | Device default + step-down | Device default + step-down |
 | Fullscreen          | ✓             | ✓                          | ✓ Mac · hidden on iPhone   |
 
-Without WebGL2 the app shows a clear message and keeps the audio analysis and spectrum running.
+Without WebGL2 the app shows a clear message and keeps the music playing.
 
 **Known limitations**
 
