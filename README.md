@@ -338,7 +338,7 @@ npm run build      # static site in dist/
 (await import('/src/dev/audioBench.ts')).runAudioBench().then(console.table);
 ```
 
-**Deploying:** it's a static site. On Vercel or Netlify, use build command `npm run build` and output directory `dist`. No backend, no environment variables. The microphone and tab audio require HTTPS, which both hosts provide.
+**Deploying:** it's a static site with no backend or environment variables. On Vercel, import the repository and `vercel.json` sets the rest: the build, Node 24, year-long caching for hashed files, and a strict content security policy. The microphone and tab audio require HTTPS, which Vercel provides. Don't add a catch-all rewrite: the app has one page, and demo tracks rely on a missing file returning 404.
 
 ### Browser support
 

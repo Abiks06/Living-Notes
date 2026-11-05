@@ -8,6 +8,11 @@ export default defineConfig({
     // three.js alone is ~700 kB minified; it gets its own long-cached chunk below.
     chunkSizeWarningLimit: 800,
     rolldownOptions: {
+      // @react-three/postprocessing imports these for effects this app never uses, and they
+      // don't declare themselves free of side effects, so they'd ship otherwise.
+      treeshake: {
+        moduleSideEffects: [{ test: /node_modules[\\/](n8ao|maath)[\\/]/, sideEffects: false }],
+      },
       output: {
         // Vendor chunks change far less often than app code, so returning visitors
         // re-download only the small app chunk after a deploy.
