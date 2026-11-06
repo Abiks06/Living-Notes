@@ -5,7 +5,7 @@
 ![Resonance demo](docs/demo.gif)
 <!-- Placeholder: record a clip with the app's own record button, convert it to a GIF and save it as docs/demo.gif. -->
 
-**[Live demo →](https://your-deployment-url.example)** <!-- Placeholder: replace after deploying. -->
+**[Live demo →](https://living-notes.vercel.app)**
 
 No sign-up, no install. Click once and the scene is already moving.
 
