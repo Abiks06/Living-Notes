@@ -1,5 +1,6 @@
 import { type CSSProperties, useEffect, useRef, useState } from 'react';
 import { audioEngine } from '../audio/AudioEngine';
+import { LIVE_AUDIO_LABEL } from '../lib/desktop';
 import { formatTime } from '../lib/formatTime';
 import { artFor } from '../library/art';
 import { useLibrary } from '../library/library';
@@ -33,7 +34,7 @@ function describe(source: ActiveSource | null): { title: string; detail: string 
     case 'mic':
       return { title: 'Microphone', detail: 'Listening live' };
     case 'tab':
-      return { title: 'Tab audio', detail: 'Listening live' };
+      return { title: LIVE_AUDIO_LABEL, detail: 'Listening live' };
     case 'file':
       return { title: source.title ?? source.name, detail: source.artist ?? '' };
     case 'demo':

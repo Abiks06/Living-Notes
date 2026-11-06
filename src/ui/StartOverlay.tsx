@@ -13,6 +13,8 @@ import { useAppStore } from '../state/appStore';
 export function StartOverlay() {
   const phase = useAppStore((state) => state.phase);
   const saved = useLibrary((state) => state.saved);
+  // Already back without asking: the app, or a browser told to allow it on every visit.
+  const restored = useLibrary((state) => state.folder);
   const [problem, setProblem] = useState('');
   if (phase !== 'intro') return null;
 
@@ -25,6 +27,10 @@ export function StartOverlay() {
 
   const open = () => {
     setProblem('');
+    if (restored) {
+      enter();
+      return;
+    }
     // Asked for first: the browser only allows it straight from the click.
     if (saved) {
       const opening = reopenFolder();
@@ -48,7 +54,7 @@ export function StartOverlay() {
       <h1 className="start__title">Resonance</h1>
       <p className="start__line">Your music, alive.</p>
       <button type="button" className="start__open" autoFocus onClick={open}>
-        {saved ? `Open ${saved}` : 'Open your music folder'}
+        {(restored ?? saved) ? `Open ${restored ?? saved}` : 'Open your music folder'}
       </button>
       <button type="button" className="start__demo" onClick={() => startExperience()}>
         Try a demo

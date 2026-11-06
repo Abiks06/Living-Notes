@@ -1,6 +1,9 @@
+import { IS_DESKTOP } from '../lib/desktop';
+
 /** Waits for the page to finish loading, so the worker's downloads never compete with it. */
 export function registerServiceWorker(): void {
-  if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
+  // The Windows app's files are already on disk.
+  if (!import.meta.env.PROD || IS_DESKTOP || !('serviceWorker' in navigator)) return;
   window.addEventListener(
     'load',
     () => {
