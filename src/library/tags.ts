@@ -359,8 +359,8 @@ interface NamedTrack {
 }
 
 /**
- * Finds songs named the other way round, "Song - Artist", by what the rest of the library knows:
- * an artist from the tags, or the same name turning up as the "song" on several files.
+ * Finds songs named the other way round, "Song - Artist", from the artists the library's tags
+ * name. Only tags count: two covers of one song look just like two songs by one artist.
  */
 export function namedBackwards(track: NamedTrack, library: readonly NamedTrack[]): boolean {
   if (!track.guessed) return false;
@@ -372,11 +372,7 @@ export function namedBackwards(track: NamedTrack, library: readonly NamedTrack[]
       const known = name(other.artist);
       return !other.guessed && (text === known || text.startsWith(`${known} `));
     });
-  if (isKnownArtist(artist)) return false;
-  if (isKnownArtist(title)) return true;
-  const count = (read: (other: NamedTrack) => string, text: string) =>
-    library.filter((other) => other.guessed && name(read(other)) === text).length;
-  return count((other) => other.title, title) >= 2 && count((other) => other.artist, artist) < 2;
+  return !isKnownArtist(artist) && isKnownArtist(title);
 }
 
 /** Best guess from a file name, for files with no tags: "03. Artist - Song (FLAC).flac". */

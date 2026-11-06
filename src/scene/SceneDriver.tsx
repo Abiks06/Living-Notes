@@ -61,15 +61,14 @@ export function SceneDriver() {
     const titled = source?.kind === 'file' && Boolean(source.title);
     if (titled && !reducedMotion && !wordSpent.current && audioFeatures.scored) {
       const climbing = audioFeatures.tension >= TITLE_FROM;
-      if (climbing || audioFeatures.titleDue) {
-        wordSpent.current = true;
-        auto.wordShown();
-        sceneDirector.flashWord(
+      if ((climbing || audioFeatures.titleDue) && !sceneDirector.wordFlash) {
+        wordSpent.current = sceneDirector.flashWord(
           sceneByKey(settings.scene),
           audioFeatures.snareCount,
           climbing,
           readingTime(flashWordFor(source, settings.word)),
         );
+        auto.wordShown();
       }
     }
     const directing = settings.autoDirector && audioFeatures.live;

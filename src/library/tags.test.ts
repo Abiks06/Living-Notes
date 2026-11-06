@@ -190,10 +190,11 @@ describe('namedBackwards', () => {
     expect(namedBackwards(track, [track, tagged('Tyler, The Creator')])).toBe(true);
   });
 
-  it('spots the same name on the song side of several files', () => {
-    const one = file('Song One', 'Royel Otis');
-    const two = file('Song Two', 'Royel Otis');
-    expect(namedBackwards(one, [one, two])).toBe(true);
+  it('leaves two artists’ versions of the same song alone', () => {
+    const one = file('Jeff Buckley', 'Hallelujah');
+    const two = file('Leonard Cohen', 'Hallelujah');
+    expect(namedBackwards(one, [one, two])).toBe(false);
+    expect(namedBackwards(two, [one, two])).toBe(false);
   });
 
   it('leaves the usual order alone', () => {

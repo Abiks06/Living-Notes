@@ -169,15 +169,16 @@ export class SceneDirector {
 
   /**
    * Takes over the screen with the word, until the next snare after it's been read. With
-   * `untilDrop` it's formed in the climb instead, and the drop itself smashes it.
+   * `untilDrop` it's formed in the climb instead, and the drop itself smashes it. Returns false
+   * if another word is still up, so this one didn't go up.
    */
   flashWord(
     returnTo: SceneDefinition,
     snareCount: number,
     untilDrop = false,
     readFor = WORD_MIN_S,
-  ): void {
-    if (this.wordFlash) return;
+  ): boolean {
+    if (this.wordFlash) return false;
     this.wordFlash = true;
     this.wordRead = readFor;
     this.wordAwaitsDrop = untilDrop;
@@ -189,6 +190,7 @@ export class SceneDirector {
     this.toShape = SHAPE.text;
     this.shapeMix = 1;
     this.transitionTo(sceneByKey('morph'), WORD_IN_S);
+    return true;
   }
 
   private updateWord(dt: number, audio: AudioFeatures): void {

@@ -161,6 +161,11 @@ describe('Word on a drop', () => {
     expect(director.wordFlash).toBe(false);
   });
 
+  it('says when a word couldn’t go up, so a song’s title can try again', () => {
+    expect(new SceneDirector(sceneByKey('terrain')).flashWord(nebula, 0)).toBe(true);
+    expect(flashing().director.flashWord(nebula, 0)).toBe(false);
+  });
+
   it('holds a word formed in the climb until the drop smashes it', () => {
     const director = new SceneDirector(nebula);
     const audio = createAudioFeatures();

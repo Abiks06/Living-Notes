@@ -128,9 +128,20 @@ function compareTracks(a: Track, b: Track): number {
   );
 }
 
+/** A file name can only be judged against the rest of the library. */
+function straightened(track: Track, all: readonly Track[]): Track {
+  if (!namedBackwards(track, all)) return track;
+  return { ...track, title: track.artist, artist: track.title, guessed: false };
+}
+
 function publish(tracks: Track[]): void {
-  const sorted = [...tracks].sort(compareTracks);
-  useLibrary.setState({ tracks: sorted, byId: new Map(sorted.map((track) => [track.id, track])) });
+  const sorted = tracks.map((track) => straightened(track, tracks)).sort(compareTracks);
+  const byId = new Map(sorted.map((track) => [track.id, track]));
+  // A song picked mid-scan can turn out to have been named backwards once more of the folder is in.
+  const { nowPlaying } = library();
+  const corrected = nowPlaying ? byId.get(nowPlaying.id) : undefined;
+  const renamed = corrected !== undefined && corrected.title !== nowPlaying?.title;
+  useLibrary.setState({ tracks: sorted, byId, ...(renamed ? { nowPlaying: corrected } : {}) });
 }
 
 async function describe(found: Found): Promise<Track | null> {
@@ -146,12 +157,6 @@ async function describe(found: Found): Promise<Track | null> {
   } catch {
     return null; // Moved or unreadable since the folder was listed.
   }
-}
-
-/** A file name can only be judged against the rest of the folder, so this waits for all of it. */
-function straightened(track: Track, all: readonly Track[]): Track {
-  if (!namedBackwards(track, all)) return track;
-  return { ...track, title: track.artist, artist: track.title, guessed: false };
 }
 
 /** Reads every file's tags, a few at a time, showing songs as they're found. */
@@ -175,7 +180,7 @@ async function addAll(found: readonly Found[], folder: string): Promise<Track[]>
     }
   };
   await Promise.all(Array.from({ length: SCAN_WIDTH }, worker));
-  publish(tracks.map((track) => straightened(track, tracks)));
+  publish(tracks);
   useLibrary.setState({ scan: null });
   return library().tracks as Track[];
 }
