@@ -30,8 +30,25 @@ jobs:
         run: npm ci
         working-directory: desktop
 
-      - name: Build and publish
+      # Opened first because electron-builder uploads files in parallel, and with no release
+      # to upload into, each upload creates its own. Users also never see a half-finished one.
+      - name: Open a draft release
+        shell: bash
+        run: gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "Resonance $GITHUB_REF_NAME" --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and upload
         run: npm run release
         working-directory: desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EP_DRAFT: 'true'
+
+      - name: Publish once everything is there
+        shell: bash
+        run: |
+          test "$(gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets | length')" = 3
+          gh release edit "$GITHUB_REF_NAME" --draft=false --latest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
