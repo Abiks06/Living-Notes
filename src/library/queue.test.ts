@@ -10,6 +10,7 @@ import {
   playNext,
   removeFromQueue,
   setShuffle,
+  syncQueue,
   upcoming,
 } from './queue';
 
@@ -101,6 +102,27 @@ describe('Play queue', () => {
       expect(queue.current).not.toBe(last);
       expect([...queue.order].sort()).toEqual(songs);
     }
+  });
+
+  it('drops deleted songs from the queue but lets the one playing finish', () => {
+    let queue = addToQueue(playFrom(EMPTY_QUEUE, songs, 'b'), 'e');
+    queue = syncQueue(queue, [], ['b', 'c', 'e']);
+    expect(queue.current).toBe('b');
+    expect(queue.order).not.toContain('c');
+    expect(queue.upNext).toEqual([]);
+    expect(peekNext(queue)).toBe('d');
+  });
+
+  it('adds new songs to the end without disturbing what plays next', () => {
+    const queue = syncQueue(playFrom(EMPTY_QUEUE, songs, 'b'), ['z'], []);
+    expect(queue.order.at(-1)).toBe('z');
+    expect(queue.current).toBe('b');
+    expect(peekNext(queue)).toBe('c');
+  });
+
+  it('never queues a song twice when the one playing is deleted and restored', () => {
+    const queue = syncQueue(playFrom(EMPTY_QUEUE, songs, 'b'), ['b'], []);
+    expect(queue.order.filter((id) => id === 'b')).toHaveLength(1);
   });
 
   it('cycles repeat', () => {

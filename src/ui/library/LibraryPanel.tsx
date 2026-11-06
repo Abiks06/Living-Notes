@@ -22,6 +22,8 @@ import { DEMO_TRACKS } from '../../audio/demoTracks';
 import { isTabAudioSupported } from '../../audio/sources';
 import { enableMic, enableTabAudio, ensureStarted, startExperience } from '../../state/actions';
 import { useAppStore } from '../../state/appStore';
+import { ScrollText } from '../ScrollText';
+import { checkForNewSongs } from '../useLibraryWatch';
 import {
   CloseIcon,
   FileIcon,
@@ -31,6 +33,7 @@ import {
   PlayIcon,
   PlayNextIcon,
   PlusIcon,
+  RefreshIcon,
   RepeatIcon,
   RepeatOneIcon,
   ShuffleIcon,
@@ -86,11 +89,13 @@ const SongRow = memo(function SongRow({
       >
         <Cover track={track} />
         <span className="song__words">
-          <span className="song__title">{track.title}</span>
-          <span className="song__artist">
-            {track.artist}
-            {track.album ? ` · ${track.album}` : ''}
+          <span className="song__title" title={track.title}>
+            {track.title}
           </span>
+          <ScrollText
+            className="song__artist"
+            text={track.album ? `${track.artist} · ${track.album}` : track.artist}
+          />
         </span>
         {track.duration > 0 && <span className="song__time">{formatTime(track.duration)}</span>}
       </button>
@@ -298,6 +303,41 @@ function OtherSources() {
   );
 }
 
+/** Where the folder can be looked at again this checks it; elsewhere it asks for it once more. */
+function RefreshButton() {
+  const watching = useLibrary((state) => state.watching);
+  const input = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <button
+        type="button"
+        className="control library__refresh"
+        aria-label="Check for new songs"
+        title="Check for new songs"
+        onClick={() => {
+          if (watching) void checkForNewSongs(true);
+          else input.current?.click();
+        }}
+      >
+        <RefreshIcon />
+      </button>
+      <input
+        ref={input}
+        type="file"
+        hidden
+        multiple
+        // A non-standard attribute, but every browser supports it.
+        {...{ webkitdirectory: '' }}
+        onChange={(event) => {
+          const files = Array.from(event.target.files ?? []);
+          event.target.value = '';
+          if (files.length > 0) void addFolderFiles(files);
+        }}
+      />
+    </>
+  );
+}
+
 export function LibraryPanel() {
   const tracks = useLibrary((state) => state.tracks);
   const folder = useLibrary((state) => state.folder);
@@ -327,6 +367,7 @@ export function LibraryPanel() {
     <aside id="library" className="library chrome" aria-label="Music library">
       <header className="library__header">
         <h2>{folder ?? 'Your music'}</h2>
+        {folder && <RefreshButton />}
         <button
           type="button"
           className="control"

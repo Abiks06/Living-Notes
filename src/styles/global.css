@@ -346,11 +346,9 @@ button {
 }
 
 .coming-up__song {
-  overflow: hidden;
   font-size: 13px;
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .library {
@@ -385,6 +383,8 @@ button {
 }
 
 .library__header h2 {
+  flex: 1;
+  min-width: 0;
   margin: 0;
   overflow: hidden;
   font-size: 16px;
@@ -558,16 +558,17 @@ button {
   min-width: 0;
 }
 
-.song__title,
-.song__artist {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
+/* Two lines is what a row can hold, and enough for nearly every title. */
 .song__title {
+  display: -webkit-box;
+  overflow: hidden;
   font-size: 14px;
   font-weight: 600;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .song[data-playing='true'] .song__title {
@@ -1568,13 +1569,6 @@ button {
   min-width: 0;
 }
 
-.player__title,
-.player__detail {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .player__title {
   font-size: 14px;
   font-weight: 600;
@@ -2460,4 +2454,89 @@ button {
   .menu__more {
     min-height: 36px;
   }
+}
+
+/* ---------- Text too long for its space ---------- */
+.scroll-text {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.scroll-text__line {
+  display: inline-block;
+}
+
+/* Only the line moves, as a transform, so it costs the page nothing while it scrolls. */
+.player .scroll-text[data-overflow='true'] .scroll-text__line {
+  animation: text-scroll var(--scroll-s) ease-in-out infinite;
+}
+
+/* A list of moving lines would be noise, so rows show an ellipsis until they're pointed at. */
+.song .scroll-text__line {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (hover: hover) {
+  .song:hover .scroll-text[data-overflow='true'] .scroll-text__line,
+  .song:focus-within .scroll-text[data-overflow='true'] .scroll-text__line {
+    display: inline-block;
+    overflow: visible;
+    animation: text-scroll var(--scroll-s) ease-in-out infinite;
+  }
+}
+
+/* Nothing to point with on a touch screen, so long lines move by themselves. */
+@media (hover: none) {
+  .song .scroll-text[data-overflow='true'] .scroll-text__line {
+    display: inline-block;
+    overflow: visible;
+    animation: text-scroll var(--scroll-s) ease-in-out infinite;
+  }
+}
+
+@keyframes text-scroll {
+  0%,
+  12% {
+    transform: translateX(0);
+  }
+  50%,
+  62% {
+    transform: translateX(var(--shift));
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* Without motion the whole name still has to be readable, so it wraps instead. */
+@media (prefers-reduced-motion: reduce) {
+  .player .scroll-text {
+    white-space: normal;
+  }
+
+  .player .scroll-text__line {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .player__detail .scroll-text__line {
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+  }
+}
+
+.title-card[data-long='true'] .title-card__title {
+  font-size: clamp(24px, 3.6vw, 52px);
+  line-height: 1.08;
+}
+
+.title-card__artist,
+.title-card__detail {
+  overflow-wrap: anywhere;
 }

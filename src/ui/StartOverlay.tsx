@@ -13,6 +13,9 @@ import { useAppStore } from '../state/appStore';
 export function StartOverlay() {
   const phase = useAppStore((state) => state.phase);
   const saved = useLibrary((state) => state.saved);
+  // Back with permission still in place, the folder is already open and its songs are loaded.
+  const ready = useLibrary((state) => (state.tracks.length > 0 ? state.folder : null));
+  const count = useLibrary((state) => state.tracks.length);
   const [problem, setProblem] = useState('');
   if (phase !== 'intro') return null;
 
@@ -23,15 +26,8 @@ export function StartOverlay() {
   };
   const failed = () => setProblem('That folder couldn’t be opened.');
 
-  const open = () => {
+  const choose = () => {
     setProblem('');
-    // Asked for first: the browser only allows it straight from the click.
-    if (saved) {
-      const opening = reopenFolder();
-      enter();
-      opening.catch(failed);
-      return;
-    }
     if (!canRememberFolder()) {
       document.querySelector<HTMLInputElement>('#start-folder')?.click();
       return;
@@ -43,18 +39,44 @@ export function StartOverlay() {
       .catch(failed);
   };
 
+  const open = () => {
+    setProblem('');
+    if (ready) {
+      enter();
+      return;
+    }
+    // Asked for first: the browser only allows it straight from the click.
+    if (saved) {
+      const opening = reopenFolder();
+      enter();
+      opening.catch(failed);
+      return;
+    }
+    choose();
+  };
+
+  const known = ready ?? saved;
+
   return (
     <div className="start">
       <h1 className="start__title">Resonance</h1>
       <p className="start__line">Your music, alive.</p>
       <button type="button" className="start__open" autoFocus onClick={open}>
-        {saved ? `Open ${saved}` : 'Open your music folder'}
+        {known ? `Open ${known}` : 'Open your music folder'}
       </button>
       <button type="button" className="start__demo" onClick={() => startExperience()}>
         Try a demo
       </button>
+      {known && (
+        <button type="button" className="start__demo" onClick={choose}>
+          Choose another folder
+        </button>
+      )}
       <p className="start__note" role={problem ? 'alert' : undefined}>
-        {problem || 'Your music stays on this device.'}
+        {problem ||
+          (ready
+            ? `${count} ${count === 1 ? 'song' : 'songs'} ready · Your music stays on this device.`
+            : 'Your music stays on this device.')}
       </p>
       <input
         id="start-folder"

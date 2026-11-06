@@ -14,6 +14,7 @@ import { StartOverlay } from './ui/StartOverlay';
 import { TitleCard } from './ui/TitleCard';
 import { TopActions } from './ui/TopActions';
 import { useChromeHidden } from './ui/useChromeHidden';
+import { useLibraryWatch } from './ui/useLibraryWatch';
 import { useShortcuts } from './ui/useShortcuts';
 
 // Fetched from the start, but only mounted once the page has painted: compiling shaders holds
@@ -46,6 +47,7 @@ export function App() {
   const phase = useAppStore((state) => state.phase);
 
   useShortcuts();
+  useLibraryWatch();
 
   return (
     <main

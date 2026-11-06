@@ -1,3 +1,4 @@
+import { wrapText } from './wrapText';
 import { useAppearance } from '../settings/appearance';
 import { useLibrary } from '../library/library';
 import { type CaptureAspect, cropRect, outputSize } from './framing';
@@ -33,11 +34,21 @@ function drawCaption(target: Composite): void {
   context.shadowColor = paper ? 'rgba(244, 239, 228, 0.8)' : 'rgba(0, 0, 0, 0.6)';
   context.shadowBlur = unit * 1.5;
   context.fillStyle = paper ? '#1d1a16' : '#ffffff';
+  const width = canvas.width - x * 2;
+  const measure = (line: string) => context.measureText(line).width;
   context.font = `700 ${unit * 4.2}px Inter, system-ui, sans-serif`;
-  context.fillText(song.title, x, y, canvas.width - x * 2);
+  let line = y;
+  for (const part of wrapText(song.title, width, measure)) {
+    context.fillText(part, x, line);
+    line += unit * 5;
+  }
   context.globalAlpha = 0.8;
   context.font = `500 ${unit * 2.8}px Inter, system-ui, sans-serif`;
-  context.fillText(song.artist, x, y + unit * 4, canvas.width - x * 2);
+  line -= unit;
+  for (const part of wrapText(song.artist, width, measure)) {
+    context.fillText(part, x, line);
+    line += unit * 3.4;
+  }
   context.restore();
 }
 

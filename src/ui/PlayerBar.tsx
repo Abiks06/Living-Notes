@@ -19,6 +19,7 @@ import {
   SlidersIcon,
   VolumeIcon,
 } from './icons';
+import { ScrollText } from './ScrollText';
 import { SeekBar } from './SongMap';
 import { STUDIO_TOGGLE_ID } from './studio/studioIds';
 import { VisualsMenu } from './VisualsMenu';
@@ -159,8 +160,8 @@ export function PlayerBar() {
           </span>
         )}
         <span className="player__words" aria-live="polite">
-          <span className="player__title">{loading ?? title}</span>
-          <span className="player__detail">{loading ? 'Loading' : detail}</span>
+          <ScrollText className="player__title" text={loading ?? title} />
+          <ScrollText className="player__detail" text={loading ? 'Loading' : detail} />
         </span>
       </button>
 
