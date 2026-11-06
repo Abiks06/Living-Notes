@@ -31,7 +31,11 @@ const PARTICLE_COST_PER_SIM_MS = 3.5;
 
 /** Above this the extra sharpness doesn't show through bloom, and fill cost keeps climbing. */
 export const MAX_DPR = 1.5;
-const DPR_STEPS: readonly number[] = [MAX_DPR, 1.25, 1];
+/** Soft through bloom, but a smooth picture at this size beats a sharp one at half the speed. */
+export const MIN_DPR = 0.7;
+/** Where a first visit begins. Starting high left weak GPUs at 11 FPS until they stepped down. */
+export const START_DPR = 1;
+const DPR_STEPS: readonly number[] = [MAX_DPR, 1.25, 1, 0.85, MIN_DPR];
 /**
  * An idle frame has to fit this to keep a resolution, well under 16.7 ms because the benchmark
  * can't see two costs on the same GPU: the browser compositing the page, and the extra
@@ -39,6 +43,8 @@ const DPR_STEPS: readonly number[] = [MAX_DPR, 1.25, 1];
  * played at 33 FPS, 10.3 ms at 1.25× played at 48, and 8.3 ms at 1× held a clean 60.
  */
 const RESOLUTION_BUDGET_MS = 10;
+/** Below 1×, the frame only has to fit 60 FPS. */
+const SMOOTH_FRAME_MS = 15;
 /**
  * Share of the frame that scales with pixel count. The same GPU fits about 0.85; rounding
  * down keeps the prediction from promising more than a lower resolution will really save.
@@ -93,7 +99,13 @@ export function predictFrameAtDpr(frameMs: number, measuredDpr: number, dpr: num
 
 /** The next resolution down from `dpr`. */
 export function lowerDpr(dpr: number): number {
-  return DPR_STEPS.find((step) => step < dpr - 0.01) ?? 1;
+  return DPR_STEPS.find((step) => step < dpr - 0.01) ?? MIN_DPR;
+}
+
+/** The resolution step that should bring `fps` close to smooth, as cost follows pixel count. */
+export function dprForFps(fps: number, dpr: number, targetFps: number): number {
+  const target = dpr * Math.sqrt(fps / targetFps);
+  return DPR_STEPS.find((step) => step <= target + 0.01 && step < dpr - 0.01) ?? MIN_DPR;
 }
 
 export interface Quality {
@@ -106,14 +118,25 @@ export interface Quality {
  * high-DPI screen resolution is both the bigger saving and the less visible loss. The tier is
  * then judged at that resolution, or a 2× screen would cost particles it can actually afford.
  */
-export function chooseQuality(m: TierMeasurement, measuredDpr: number, touch: boolean): Quality {
+export function chooseQuality(
+  m: TierMeasurement,
+  measuredDpr: number,
+  touch: boolean,
+  ceiling = measuredDpr,
+): Quality {
   if (!Number.isFinite(m.frameMs) || m.frameMs <= 0) {
     return { tier: chooseTier(m, touch), dpr: measuredDpr };
   }
-  const steps = [measuredDpr, ...DPR_STEPS.filter((step) => step < measuredDpr)];
-  const fits = (step: number) =>
-    predictFrameAtDpr(m.frameMs, measuredDpr, step) <= RESOLUTION_BUDGET_MS;
-  const dpr = steps.find(fits) ?? steps[steps.length - 1] ?? measuredDpr;
+  const predict = (step: number) => predictFrameAtDpr(m.frameMs, measuredDpr, step);
+  const top = Math.max(ceiling, measuredDpr);
+  const steps = [top, ...DPR_STEPS.filter((step) => step < top - 0.01)];
+  // Sharpness above 1× has to leave headroom. Going below 1× is only for what can't hold 60.
+  const sharp = steps.filter((step) => step >= 1).find((s) => predict(s) <= RESOLUTION_BUDGET_MS);
+  const dpr =
+    sharp ??
+    steps.find((step) => step <= 1 && predict(step) <= SMOOTH_FRAME_MS) ??
+    steps[steps.length - 1] ??
+    measuredDpr;
   const frameMs = predictFrameAtDpr(m.frameMs, measuredDpr, dpr);
   return { tier: chooseTier({ ...m, frameMs }, touch), dpr };
 }
@@ -131,7 +154,7 @@ function readCache(gpu: string): Quality | null {
       cached?.gpu === gpu &&
       ORDER.includes(cached.tier as ConcreteTier) &&
       typeof dpr === 'number' &&
-      dpr >= 1 &&
+      dpr >= MIN_DPR &&
       dpr <= MAX_DPR
     ) {
       return { tier: cached.tier as ConcreteTier, dpr };
@@ -149,7 +172,7 @@ export function cachedTier(gpu: string): ConcreteTier | null {
 
 /** The resolution to start from, before anything has been measured on this visit. */
 export function provisionalDpr(gpu: string): number {
-  return readCache(gpu)?.dpr ?? MAX_DPR;
+  return readCache(gpu)?.dpr ?? START_DPR;
 }
 
 export function rememberQuality(gpu: string, quality: Quality): void {

@@ -44,7 +44,8 @@ export function initUrlSync(): () => void {
 
 /** The current page URL including the look, for the "Copy link" button. */
 export function shareUrl(): string {
-  const hash = encodeSettings(readSettings());
+  // A shared link means this look, so it opens with the look held still.
+  const hash = encodeSettings({ ...readSettings(), autoDirector: false });
   const { origin, pathname, search } = window.location;
   return `${origin}${pathname}${search}${hash ? `#${hash}` : ''}`;
 }

@@ -4,7 +4,7 @@ import { recordingSupport } from '../recording/clipRecorder';
 import { canRecordClip, TAB_RECORDING_REASON } from '../recording/recordable';
 import { startRecording, stopRecording } from '../recording/recordingActions';
 import { useAppStore } from '../state/appStore';
-import { CollapseIcon, ExpandIcon, MoonIcon, RecordIcon, StopIcon } from './icons';
+import { CollapseIcon, ExpandIcon, LampIcon, RecordIcon, StopIcon } from './icons';
 
 const RECORDING = recordingSupport();
 
@@ -151,7 +151,7 @@ function LoungeToggle() {
       title="Lounge mode (L)"
       onClick={toggleLounge}
     >
-      <MoonIcon />
+      <LampIcon />
     </button>
   );
 }

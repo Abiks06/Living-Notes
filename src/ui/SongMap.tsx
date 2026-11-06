@@ -1,9 +1,9 @@
+import { useAppearance } from '../settings/appearance';
 import { type PointerEvent, useEffect, useRef } from 'react';
 import { Color } from 'three';
 import { audioEngine } from '../audio/AudioEngine';
 import { sectionAt, type SongSummary } from '../audio/score/songMap';
 import { formatTime } from '../lib/formatTime';
-import { useMediaQuery } from '../lib/useMediaQuery';
 import { lookOf } from '../scene/partLook';
 import { paletteColors } from '../settings/palettes';
 import { useSettings } from '../settings/settingsStore';
@@ -93,7 +93,7 @@ export function SeekBar() {
   const input = useRef<HTMLInputElement>(null);
   const tip = useRef<HTMLSpanElement>(null);
   const dragging = useRef(false);
-  const lightScheme = useMediaQuery('(prefers-color-scheme: light)');
+  const lightScheme = useAppearance((state) => state.appearance === 'paper');
   const palette = useSettings((state) => state.palette);
   const custom = useSettings((state) => state.customColors);
   const paletteStops = paletteColors(palette, custom);

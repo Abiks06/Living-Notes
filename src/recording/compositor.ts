@@ -1,3 +1,4 @@
+import { useAppearance } from '../settings/appearance';
 import { useLibrary } from '../library/library';
 import { type CaptureAspect, cropRect, outputSize } from './framing';
 
@@ -28,9 +29,10 @@ function drawCaption(target: Composite): void {
   const y = unit * 8;
   context.save();
   context.textBaseline = 'alphabetic';
-  context.shadowColor = 'rgba(0, 0, 0, 0.6)';
+  const paper = useAppearance.getState().appearance === 'paper';
+  context.shadowColor = paper ? 'rgba(244, 239, 228, 0.8)' : 'rgba(0, 0, 0, 0.6)';
   context.shadowBlur = unit * 1.5;
-  context.fillStyle = '#ffffff';
+  context.fillStyle = paper ? '#1d1a16' : '#ffffff';
   context.font = `700 ${unit * 4.2}px Inter, system-ui, sans-serif`;
   context.fillText(song.title, x, y, canvas.width - x * 2);
   context.globalAlpha = 0.8;

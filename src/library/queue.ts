@@ -25,7 +25,7 @@ export const EMPTY_QUEUE: PlayQueue = {
   history: [],
   current: null,
   shuffle: false,
-  repeat: 'all',
+  repeat: 'off',
 };
 
 const MAX_HISTORY = 200;

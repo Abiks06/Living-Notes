@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useLibrary } from '../library/library';
 import { MORPH_SHAPES, SCENES } from '../scene/scenes';
+import { APPEARANCES, useAppearance } from '../settings/appearance';
 import { useSettings } from '../settings/settingsStore';
 import { useAppStore } from '../state/appStore';
 import { CastList } from './CastList';
@@ -9,9 +10,9 @@ import { STUDIO_TOGGLE_ID } from './studio/studioIds';
 
 const CROSSFADES = [
   { seconds: 0, label: 'Off' },
-  { seconds: 3, label: '3 s' },
-  { seconds: 6, label: '6 s' },
-  { seconds: 10, label: '10 s' },
+  { seconds: 3, label: '3s' },
+  { seconds: 6, label: '6s' },
+  { seconds: 10, label: '10s' },
 ];
 const SHAPE_OPTIONS = [{ key: 'auto', label: 'Auto' }, ...MORPH_SHAPES] as const;
 
@@ -25,6 +26,9 @@ export function VisualsMenu({ onClose }: { onClose: () => void }) {
   const artColours = useLibrary((state) => state.artColours);
   const setCrossfade = useLibrary((state) => state.setCrossfade);
   const setArtColours = useLibrary((state) => state.setArtColours);
+  const appearance = useAppearance((state) => state.appearance);
+  const setAppearance = useAppearance((state) => state.setAppearance);
+  const showing = SCENES.find((preset) => preset.key === scene)?.label ?? scene;
   const box = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,29 +50,24 @@ export function VisualsMenu({ onClose }: { onClose: () => void }) {
 
   return (
     <div ref={box} className="menu" role="dialog" aria-label="Visuals">
-      <label className="menu__auto">
-        <span>
-          <strong>Auto</strong>
-          <small>Scenes and colours follow the music</small>
-        </span>
-        <input
-          type="checkbox"
-          role="switch"
-          checked={auto}
-          onChange={(event) => set('autoDirector', event.currentTarget.checked)}
-        />
-      </label>
-
       <div className="menu__section">
         <p className="menu__label">Scene</p>
-        <div className="menu__scenes" role="group" aria-label="Scenes">
+        <div className="menu__grid" role="group" aria-label="Scene">
+          <button
+            type="button"
+            className="menu__option"
+            aria-pressed={auto}
+            title="Scenes and colours follow the music"
+            onClick={() => set('autoDirector', true)}
+          >
+            Auto
+          </button>
           {SCENES.map((preset) => (
             <button
               key={preset.key}
               type="button"
               className="menu__option"
               aria-pressed={!auto && scene === preset.key}
-              data-showing={auto && scene === preset.key}
               title={preset.hint}
               onClick={() => {
                 // Picking a scene is taking the wheel.
@@ -80,6 +79,11 @@ export function VisualsMenu({ onClose }: { onClose: () => void }) {
             </button>
           ))}
         </div>
+        {auto && (
+          <p className="menu__note">
+            Following the music · now <strong>{showing}</strong>
+          </p>
+        )}
       </div>
 
       {/* Only once a person is driving: under Auto this row would come and go with the scene. */}
@@ -107,20 +111,42 @@ export function VisualsMenu({ onClose }: { onClose: () => void }) {
         <CastList />
       </div>
 
+      <div className="menu__section">
+        <p className="menu__label">Appearance</p>
+        <div className="menu__looks" role="group" aria-label="Appearance">
+          {APPEARANCES.map((option) => (
+            <button
+              key={option.key}
+              type="button"
+              className="menu__look"
+              data-look={option.key}
+              aria-pressed={appearance === option.key}
+              title={option.hint}
+              onClick={() => setAppearance(option.key)}
+            >
+              <span className="menu__swatch" aria-hidden="true" />
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="menu__rows">
-        <label className="menu__row">
-          Crossfade
-          <select
-            value={crossfade}
-            onChange={(event) => setCrossfade(Number(event.currentTarget.value))}
-          >
+        <div className="menu__row">
+          <span id="crossfade-label">Crossfade</span>
+          <div className="menu__segments" role="group" aria-labelledby="crossfade-label">
             {CROSSFADES.map(({ seconds, label }) => (
-              <option key={seconds} value={seconds}>
+              <button
+                key={seconds}
+                type="button"
+                aria-pressed={crossfade === seconds}
+                onClick={() => setCrossfade(seconds)}
+              >
                 {label}
-              </option>
+              </button>
             ))}
-          </select>
-        </label>
+          </div>
+        </div>
         <label className="menu__row">
           Colours from album art
           <input

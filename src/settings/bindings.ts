@@ -38,7 +38,7 @@ function apply(settings: Settings): void {
   (songColours ?? paletteColors(settings.palette, settings.customColors)).forEach((hex, i) => {
     liveLook.palette[i]?.set(hex);
   });
-  document.documentElement.style.setProperty('--tint', liveLook.palette[2].getStyle());
+  document.documentElement.style.setProperty('--song-tint', liveLook.palette[2].getStyle());
   settings.sensitivity.forEach((value, band) => {
     audioEngine.sensitivity[band] = value;
   });

@@ -5,6 +5,7 @@ import {
   cachedTier,
   chooseQuality,
   isTouchDevice,
+  MAX_DPR,
   rememberQuality,
   tierCount,
 } from '../scene/particles/tiers';
@@ -14,15 +15,16 @@ import { benchmarkProbe } from './benchmarkProbe';
 import { GpuTimer } from './GpuTimer';
 
 /** Let shaders compile and the GPU clock up before trusting any timing. */
-const WARM_UP_FRAMES = 45;
+const WARM_UP_FRAMES = 30;
 const SAMPLES_PER_PHASE = 12;
 /** Give up if the driver never returns results. */
 const MAX_FRAMES_PER_PHASE = 120;
 /**
  * Anything slower means a throttled or background page, whose idle GPU sits at low clocks
- * and would read as a weak one. Such samples are thrown away rather than cached.
+ * and would read as a weak one. Such samples are thrown away rather than cached. A slow GPU
+ * must stay under this, or it could never finish a measurement and would start over every visit.
  */
-const STALLED_FRAME_S = 0.05;
+const STALLED_FRAME_S = 0.25;
 const FIRST = -3;
 const LAST = 2;
 
@@ -130,7 +132,8 @@ export function TierBenchmark() {
     if (!measuredAt) return;
     const measurement = { frameMs: r.frameMs, stepMs, measuredCount: tierCount(measuredAt) };
     const measuredDpr = gl.getPixelRatio();
-    const quality = chooseQuality(measurement, measuredDpr, isTouchDevice());
+    const ceiling = Math.min(MAX_DPR, window.devicePixelRatio);
+    const quality = chooseQuality(measurement, measuredDpr, isTouchDevice(), ceiling);
     rememberQuality(gpuKey, quality);
     store.setBenchmark({
       frameMs: r.frameMs,

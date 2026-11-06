@@ -56,12 +56,25 @@ describe('chooseQuality', () => {
   });
 });
 
+describe('a first visit on a weak GPU', () => {
+  it('drops below 1× when a frame can’t fit 60 FPS there', () => {
+    expect(chooseQuality(at262k(45, 2), 1, false).dpr).toBe(0.7);
+    expect(chooseQuality(at262k(17, 2), 1, false).dpr).toBe(0.85);
+  });
+
+  it('climbs to what a strong GPU and a sharp display can carry', () => {
+    expect(chooseQuality(at262k(3, 0.25), 1, false, 1.5).dpr).toBe(1.5);
+    expect(chooseQuality(at262k(3, 0.25), 1, false, 1).dpr).toBe(1);
+  });
+});
+
 describe('lowerDpr', () => {
-  it('walks down the steps and stops at 1×', () => {
+  it('walks down the steps and stops at the floor', () => {
     expect(lowerDpr(1.5)).toBe(1.25);
     expect(lowerDpr(1.25)).toBe(1);
     expect(lowerDpr(1.1)).toBe(1);
-    expect(lowerDpr(1)).toBe(1);
+    expect(lowerDpr(1)).toBe(0.85);
+    expect(lowerDpr(0.7)).toBe(0.7);
   });
 });
 

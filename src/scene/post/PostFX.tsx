@@ -12,11 +12,13 @@ import { useRef } from 'react';
 import { HalfFloatType, Vector2, Vector3 } from 'three';
 import { audioFeatures } from '../../audio/features';
 import { useReducedMotion } from '../../lib/useMediaQuery';
+import { useAppearance } from '../../settings/appearance';
 import { liveLook } from '../../settings/bindings';
 import { useSettings } from '../../settings/settingsStore';
 import { useAppStore } from '../../state/appStore';
 import { partMemory } from '../partLook';
 import { sceneDirector } from '../SceneDirector';
+import { AppearanceEffect } from './AppearanceEffect';
 import { AtmosphereEffect, type Room } from './AtmosphereEffect';
 import { type DropLight, ImpactEffect } from './ImpactEffect';
 import { trailDamping } from './trailDamping';
@@ -25,6 +27,7 @@ import { TrailEffect } from './TrailEffect';
 const Trail = wrapEffect(TrailEffect);
 const Atmosphere = wrapEffect(AtmosphereEffect);
 const Impact = wrapEffect(ImpactEffect);
+const Look = wrapEffect(AppearanceEffect);
 const BASE_ABERRATION = 0.0005;
 /** Reused every frame, so the render loop stays allocation-free. */
 const room: Room = {
@@ -56,6 +59,7 @@ export function PostFX() {
   const trail = useRef<TrailEffect>(null);
   const atmosphere = useRef<AtmosphereEffect>(null);
   const impact = useRef<ImpactEffect>(null);
+  const look = useRef<AppearanceEffect>(null);
   const bloom = useRef<BloomEffect>(null);
   const aberration = useRef<ChromaticAberrationEffect>(null);
   const offset = useRef(new Vector2(BASE_ABERRATION, BASE_ABERRATION));
@@ -117,6 +121,7 @@ export function PostFX() {
     dropLight.calm = reducedMotion;
     dropLight.hue = partMemory.hue;
     impact.current?.follow(dropLight, liveLook.palette[2], delta);
+    look.current?.follow(useAppearance.getState().appearance, Math.min(delta, 0.1));
   });
 
   return (
@@ -152,6 +157,7 @@ export function PostFX() {
       )}
       <Vignette offset={0.28} darkness={0.72} />
       <ToneMapping mode={ToneMappingMode.AGX} />
+      <Look ref={look} />
     </EffectComposer>
   );
 }

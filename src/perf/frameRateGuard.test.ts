@@ -39,7 +39,7 @@ describe('FrameRateGuard', () => {
   it('treats long stalls (hidden or throttled tab) as noise, not slowness', () => {
     const guard = new FrameRateGuard();
     run(guard, 60, COOLDOWN_S);
-    expect(run(guard, 5, 10)).toBe(false);
+    expect(run(guard, 3, 10)).toBe(false);
   });
 
   it('a brief hitch inside an otherwise smooth window does not fire', () => {

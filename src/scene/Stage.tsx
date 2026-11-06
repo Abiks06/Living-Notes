@@ -33,7 +33,7 @@ export function Stage() {
       <div className="stage" aria-hidden="true">
         <Canvas
           // Owned by the store, not setDpr: this prop is reapplied whenever Stage re-renders.
-          dpr={[1, maxDpr]}
+          dpr={Math.min(window.devicePixelRatio, maxDpr)}
           gl={{ antialias: false, alpha: false, powerPreference: 'high-performance' }}
           camera={{ position: [0, 0.6, 8.5], fov: 50, near: 0.1, far: 100 }}
           onCreated={(state) => {

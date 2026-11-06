@@ -32,12 +32,14 @@ function format(value: number): string {
 
 export function encodeSettings(settings: Settings): string {
   const params = new URLSearchParams();
-  if (settings.scene !== DEFAULT_SETTINGS.scene) params.set('s', settings.scene);
+  // Under Auto the scene and palette are the show's to change, not part of the look.
+  const pinned = !settings.autoDirector;
+  if (pinned && settings.scene !== DEFAULT_SETTINGS.scene) params.set('s', settings.scene);
   if (settings.morphShape !== DEFAULT_SETTINGS.morphShape) params.set('ms', settings.morphShape);
   const word = settings.word.trim();
   if (word && word !== DEFAULT_SETTINGS.word) params.set('w', word);
-  if (settings.palette !== DEFAULT_SETTINGS.palette) params.set('p', settings.palette);
-  if (settings.palette === 'custom') {
+  if (pinned && settings.palette !== DEFAULT_SETTINGS.palette) params.set('p', settings.palette);
+  if (pinned && settings.palette === 'custom') {
     params.set('cc', settings.customColors.map((c) => c.replace('#', '').toLowerCase()).join('-'));
   }
   if (settings.particles !== DEFAULT_SETTINGS.particles) params.set('n', settings.particles);

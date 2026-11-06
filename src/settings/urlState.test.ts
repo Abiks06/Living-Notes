@@ -4,6 +4,7 @@ import { decodeSettings, encodeSettings, settingsFromHash } from './urlState';
 
 const tweaked: Settings = {
   ...DEFAULT_SETTINGS,
+  autoDirector: false,
   scene: 'terrain',
   palette: 'custom',
   customColors: ['#112233', '#445566', '#778899', '#aabbcc'],
@@ -22,6 +23,17 @@ describe('share-link codec', () => {
 
   it('round-trips every kind of setting', () => {
     expect(settingsFromHash(encodeSettings(tweaked))).toEqual(tweaked);
+  });
+
+  it('leaves the scene and palette out while Auto is changing them', () => {
+    const hash = encodeSettings({
+      ...DEFAULT_SETTINGS,
+      autoDirector: true,
+      scene: 'terrain',
+      palette: 'gold',
+    });
+    expect(hash).toBe('');
+    expect(settingsFromHash(hash).autoDirector).toBe(true);
   });
 
   it('only writes values that differ from the defaults', () => {

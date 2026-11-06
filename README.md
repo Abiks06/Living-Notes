@@ -45,7 +45,7 @@ No sign-up, no install. Click once and the scene is already moving.
 - **Onsets by register:** low hits (kick), mid hits (snare, piano attacks) and high hits (hats) are told apart by where the energy went.
 - **Tone:** spectral centroid (brightness), flatness (tonal or noisy), and pitch from a separate long-window FFT, with chord-change detection for music without drums.
 - **Live tempo and beat phase,** with an honest confidence: free-time music reports no pulse rather than inventing one.
-- One slim player bar: song and cover art, shuffle, previous, play, next, repeat, volume, and a thin seek line. Hover the line to open the song map. It all fades out after 3 s so the picture has the screen.
+- One slim player bar: song and cover art, shuffle, previous, play, next, repeat, volume, and a thin seek line. Hover the line to open the song map, click the clock for time left, and scroll over the volume to change it. It all fades out after 3 s so the picture has the screen.
 
 **Visuals**
 
@@ -60,6 +60,7 @@ No sign-up, no install. Click once and the scene is already moving.
 - **A lens, not dots:** depth of field with soft bokeh discs, and fast particles stretch into streaks along their motion.
 - **Post-processing:** feedback trails, bloom, snare-driven chromatic aberration, a palette-tinted atmosphere that swells with sub-bass, vignette and AgX tone mapping.
 - **Auto** (on by default, press `V`): scenes and palettes follow the music, changing at drops and with each part of a song. Picking a scene takes over.
+- **Appearances** (press `T`): Aura tints the interface with the song's colours, Midnight is quiet and neutral, Ember warms the room and the picture, and Paper turns the whole show into ink on paper. Your system's light setting picks Paper on a first visit.
 - **Interactive:**
   - Drag to orbit and scroll to zoom, with an auto-orbit that follows the mids.
   - Moving the cursor carves a wake through the cloud.
@@ -99,6 +100,8 @@ No sign-up, no install. Click once and the scene is already moving.
 | `L`     | Lounge mode                  | `B`                         | Compare with original |
 | `[` `]` | Previous or next section     | `Q`                         | Music library         |
 | `S`     | Shuffle                      | `R`                         | Repeat                |
+| `T`     | Next appearance              | `←` `→`                     | Back or forward 5 s   |
+|         |                              | `↑` `↓`                     | Volume                |
 
 ---
 

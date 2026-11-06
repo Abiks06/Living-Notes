@@ -32,7 +32,7 @@ describe('Play queue', () => {
   });
 
   it('wraps on repeat all and stops with repeat off', () => {
-    const looping = playFrom(EMPTY_QUEUE, songs, 'e');
+    const looping = { ...playFrom(EMPTY_QUEUE, songs, 'e'), repeat: 'all' as const };
     expect(advance(looping, false).current).toBe('a');
     const stopping = { ...looping, repeat: 'off' as const };
     expect(peekNext(stopping)).toBe(null);
@@ -104,9 +104,10 @@ describe('Play queue', () => {
   });
 
   it('cycles repeat', () => {
-    const one = cycleRepeat(EMPTY_QUEUE);
-    expect(one.repeat).toBe('one');
-    expect(cycleRepeat(one).repeat).toBe('off');
-    expect(cycleRepeat(cycleRepeat(one)).repeat).toBe('all');
+    expect(EMPTY_QUEUE.repeat).toBe('off');
+    const all = cycleRepeat(EMPTY_QUEUE);
+    expect(all.repeat).toBe('all');
+    expect(cycleRepeat(all).repeat).toBe('one');
+    expect(cycleRepeat(cycleRepeat(all)).repeat).toBe('off');
   });
 });

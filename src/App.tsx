@@ -1,6 +1,5 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useLibrary } from './library/library';
-import { Stage } from './scene/Stage';
 import { prepareAudio } from './state/actions';
 import { useAppStore } from './state/appStore';
 import { CaptureGuide } from './ui/CaptureGuide';
@@ -17,6 +16,13 @@ import { TopActions } from './ui/TopActions';
 import { useChromeHidden } from './ui/useChromeHidden';
 import { useShortcuts } from './ui/useShortcuts';
 
+// Fetched from the start, but only mounted once the page has painted: compiling shaders holds
+// up the main thread, and the buttons should be usable before that begins.
+const stageModule = import('./scene/Stage');
+/** Long enough for the first screen to reach the display before the GPU gets busy. */
+const STAGE_DELAY_MS = 150;
+const Stage = lazy(() => stageModule.then((module) => ({ default: module.Stage })));
+
 // Not needed for the first impression, so it loads the first time it's opened.
 const StudioPanel = lazy(() =>
   import('./ui/studio/StudioDrawer').then((module) => ({ default: module.StudioPanel })),
@@ -29,6 +35,11 @@ const LibraryPanel = lazy(() =>
 
 export function App() {
   useEffect(prepareAudio, []);
+  const [painted, setPainted] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setPainted(true), STAGE_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
   const chromeHidden = useChromeHidden();
   const studioOpen = useAppStore((state) => state.studioOpen);
   const libraryOpen = useLibrary((state) => state.open);
@@ -43,7 +54,11 @@ export function App() {
       data-phase={phase}
       data-library={libraryOpen ? 'open' : 'closed'}
     >
-      <Stage />
+      {painted && (
+        <Suspense fallback={null}>
+          <Stage />
+        </Suspense>
+      )}
       <CaptureGuide />
       <header className="brand chrome" aria-hidden="true">
         <span className="brand__mark" />

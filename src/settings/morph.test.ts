@@ -28,6 +28,7 @@ describe('morph settings in share links', () => {
   it('round-trips a pinned shape and a custom word', () => {
     const look = {
       ...DEFAULT_SETTINGS,
+      autoDirector: false,
       scene: 'morph',
       morphShape: 'word',
       word: 'Zoë 🎧',

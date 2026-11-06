@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { Actor } from '../audio/cast';
 import type { SongSummary } from '../audio/score/songMap';
 import type { CaptureAspect, ClipLength } from '../recording/framing';
-import { MAX_DPR, type ConcreteTier } from '../scene/particles/tiers';
+import { START_DPR, type ConcreteTier } from '../scene/particles/tiers';
 
 export type Phase = 'intro' | 'running';
 
@@ -122,7 +122,7 @@ export const useAppStore = create<AppState>()((set) => ({
   gpu: { state: 'pending' },
   gpuGeneration: 0,
   autoTier: null,
-  maxDpr: MAX_DPR,
+  maxDpr: START_DPR,
   benchmark: null,
   notice: null,
   paused: false,

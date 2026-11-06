@@ -3,6 +3,10 @@
 :root {
   color-scheme: dark;
   --stage-bg: #05050a;
+  --on-stage: #fff;
+  --on-stage-soft: rgba(255, 255, 255, 0.72);
+  --on-stage-glow: rgba(0, 0, 0, 0.6);
+  --stage-chip: rgba(10, 10, 14, 0.42);
   --text: #f4f4f6;
   --text-muted: rgba(235, 235, 240, 0.6);
   --panel: rgba(14, 14, 18, 0.88);
@@ -10,7 +14,7 @@
   --panel-border: rgba(255, 255, 255, 0.07);
   --chip: rgba(255, 255, 255, 0.06);
   --chip-hover: rgba(255, 255, 255, 0.1);
-  --tint: #9d8cff;
+  --tint: var(--song-tint, #9d8cff);
   --accent: var(--tint);
   --play: #ffffff;
   --on-play: #0b0b0f;
@@ -23,21 +27,54 @@
   --font: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --text: #17142a;
-    --text-muted: rgba(23, 20, 42, 0.62);
-    --panel: rgba(250, 249, 255, 0.9);
-    --panel-strong: rgba(252, 251, 255, 0.95);
-    --panel-border: rgba(23, 20, 42, 0.1);
-    --chip: rgba(23, 20, 42, 0.05);
-    --chip-hover: rgba(23, 20, 42, 0.1);
-    --accent: #4a3cd6;
-    --play: #17142a;
-    --on-play: #ffffff;
-    --accent-soft: rgba(106, 76, 240, 0.16);
-    --shadow: 0 18px 50px rgba(0, 0, 0, 0.3);
-  }
+/* Aura: the panels take on the song. The tint changes per song, so it costs nothing per frame. */
+:root[data-appearance='aura'] {
+  --panel: color-mix(in srgb, var(--tint) 12%, rgba(12, 12, 16, 0.9));
+  --panel-strong: color-mix(in srgb, var(--tint) 11%, #101014);
+  --panel-border: color-mix(in srgb, var(--tint) 22%, transparent);
+  --chip: color-mix(in srgb, var(--tint) 11%, rgba(255, 255, 255, 0.05));
+  --chip-hover: color-mix(in srgb, var(--tint) 20%, rgba(255, 255, 255, 0.08));
+}
+
+:root[data-appearance='midnight'] {
+  --tint: #dfe3ee;
+  --accent-2: #dfe3ee;
+}
+
+:root[data-appearance='ember'] {
+  --text: #f7ecdf;
+  --text-muted: rgba(247, 232, 214, 0.62);
+  --panel: rgba(28, 18, 12, 0.9);
+  --panel-strong: #1f140e;
+  --panel-border: rgba(255, 190, 130, 0.13);
+  --chip: rgba(255, 190, 130, 0.09);
+  --chip-hover: rgba(255, 190, 130, 0.16);
+  --tint: #ffb066;
+  --accent-2: #ffb066;
+  --play: #ffb066;
+  --on-play: #241308;
+}
+
+/* Paper: the one light mode, and the picture changes with it (see AppearanceEffect). */
+:root[data-appearance='paper'] {
+  color-scheme: light;
+  --stage-bg: #ece4d6;
+  --on-stage: #1d1a16;
+  --on-stage-soft: rgba(29, 26, 22, 0.68);
+  --on-stage-glow: rgba(244, 239, 228, 0.75);
+  --stage-chip: rgba(250, 246, 238, 0.6);
+  --text: #1d1a16;
+  --text-muted: rgba(29, 26, 22, 0.64);
+  --panel: rgba(250, 246, 238, 0.93);
+  --panel-strong: #fbf7ef;
+  --panel-border: rgba(29, 26, 22, 0.13);
+  --chip: rgba(29, 26, 22, 0.06);
+  --chip-hover: rgba(29, 26, 22, 0.11);
+  --tint: #b4432a;
+  --accent-2: #2a5f8f;
+  --play: #1d1a16;
+  --on-play: #fbf7ef;
+  --shadow: 0 16px 40px rgba(60, 45, 25, 0.22);
 }
 
 *,
@@ -83,6 +120,7 @@ button {
 .stage {
   position: absolute;
   inset: 0;
+  animation: stage-in 500ms ease-out both;
 }
 
 .stage--fallback {
@@ -124,7 +162,7 @@ button {
   left: max(20px, env(safe-area-inset-left));
   font-size: 13px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--on-stage-soft);
   pointer-events: none;
 }
 
@@ -141,7 +179,7 @@ button {
   left: 50%;
   bottom: 100px;
   margin: 0;
-  color: rgba(255, 255, 255, 0.62);
+  color: var(--on-stage-soft);
   font-size: 12.5px;
   white-space: nowrap;
   transform: translateX(-50%);
@@ -248,14 +286,14 @@ button {
 
 .title-card__words {
   min-width: 0;
-  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.65);
+  text-shadow: 0 2px 24px var(--on-stage-glow);
 }
 
 .title-card__title,
 .title-card__artist,
 .title-card__detail {
   margin: 0;
-  color: #fff;
+  color: var(--on-stage);
 }
 
 .title-card__title {
@@ -852,8 +890,8 @@ button {
   padding: 0 14px;
   border: 0;
   border-radius: 20px;
-  background: rgba(10, 10, 14, 0.42);
-  color: rgba(255, 255, 255, 0.86);
+  background: var(--stage-chip);
+  color: var(--on-stage);
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
@@ -1394,7 +1432,8 @@ button {
 }
 
 .input-select option {
-  color: #17142a;
+  background: var(--panel-strong);
+  color: var(--text);
 }
 
 .word-input {
@@ -1560,11 +1599,18 @@ button {
 }
 
 .player__time {
-  margin-right: 8px;
+  min-height: 32px;
+  margin-right: 6px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
   color: var(--text-muted);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  cursor: pointer;
+  transition: background 120ms ease;
 }
 
 .control {
@@ -1598,6 +1644,28 @@ button {
   color: color-mix(in srgb, var(--accent) 65%, var(--text));
 }
 
+/* A mode that's on keeps a dot under it, so it reads at a glance and without colour alone. */
+.control--mode {
+  position: relative;
+}
+
+.control--mode[aria-pressed='true']::after,
+.control--mode[data-on='true']::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.control--mode[data-on='true'] {
+  color: color-mix(in srgb, var(--accent) 65%, var(--text));
+}
+
 .control--play {
   width: 44px;
   height: 44px;
@@ -1607,12 +1675,52 @@ button {
 }
 
 .volume {
-  width: 84px;
-  height: 20px;
+  width: 88px;
+  height: 24px;
   margin: 0 8px 0 0;
   background: transparent;
-  accent-color: var(--text);
   cursor: pointer;
+  appearance: none;
+}
+
+.volume::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--text) var(--level), var(--chip-hover) var(--level));
+}
+
+.volume::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--chip-hover);
+}
+
+.volume::-moz-range-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--text);
+}
+
+.volume::-webkit-slider-thumb {
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: var(--text);
+  appearance: none;
+  transition: transform 120ms ease-out;
+}
+
+.volume::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text);
+}
+
+.volume:active::-webkit-slider-thumb {
+  transform: scale(1.2);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -1620,9 +1728,17 @@ button {
     background: var(--chip);
   }
 
-  .control:hover:not(:disabled):not(.control--play) {
+  .control:hover:not(:disabled):not(.control--play),
+  .player__time:hover {
     background: var(--chip);
     color: var(--text);
+  }
+
+  .menu__option:hover:not([aria-pressed='true']),
+  .cast__actor:hover:not([aria-pressed='true']),
+  .menu__look:hover:not([aria-pressed='true']),
+  .menu__segments button:hover:not([aria-pressed='true']) {
+    background: var(--chip-hover);
   }
 }
 
@@ -1749,8 +1865,10 @@ button {
   bottom: calc(100% + 10px);
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  width: min(330px, calc(100vw - 2 * var(--gutter)));
+  gap: 12px;
+  width: min(344px, calc(100vw - 2 * var(--gutter)));
+  max-height: calc(100dvh - 110px);
+  overflow-y: auto;
   padding: 14px;
   border: 1px solid var(--panel-border);
   border-radius: 14px;
@@ -1890,13 +2008,109 @@ button {
   font-size: 13px;
 }
 
-.menu__row select {
-  padding: 3px 6px;
-  border: 1px solid var(--panel-border);
-  border-radius: 6px;
+.menu__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.menu__grid .menu__option {
+  justify-content: center;
+  padding: 0 6px;
+}
+
+.menu__note {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.menu__note strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.menu__looks {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.menu__look {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 2px 7px;
+  border: 0;
+  border-radius: 10px;
   background: var(--chip);
   color: var(--text);
-  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    transform 120ms ease-out;
+}
+
+.menu__look:active {
+  transform: scale(0.97);
+}
+
+.menu__look[aria-pressed='true'] {
+  box-shadow: inset 0 0 0 1.5px var(--text);
+}
+
+.menu__swatch {
+  width: 100%;
+  max-width: 44px;
+  height: 22px;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px var(--panel-border);
+}
+
+[data-look='aura'] .menu__swatch {
+  background: linear-gradient(120deg, #1c1436, var(--tint), #0c2f3c);
+}
+
+[data-look='midnight'] .menu__swatch {
+  background: linear-gradient(120deg, #05050a, #2a2d38);
+}
+
+[data-look='ember'] .menu__swatch {
+  background: linear-gradient(120deg, #1f140e, #b85a24, #ffb066);
+}
+
+[data-look='paper'] .menu__swatch {
+  background: linear-gradient(120deg, #fbf7ef, #e6dbc7);
+}
+
+.menu__segments {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 9px;
+  background: var(--chip);
+}
+
+.menu__segments button {
+  min-width: 38px;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.menu__segments button[aria-pressed='true'] {
+  background: var(--play);
+  color: var(--on-play);
 }
 
 .menu__footer {
@@ -1958,33 +2172,9 @@ button {
   align-items: center;
   justify-content: center;
   padding: var(--gutter);
-  color: #fff;
+  color: var(--on-stage);
   text-align: center;
-  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.55);
-}
-
-.start > * {
-  animation: start-in 500ms cubic-bezier(0.23, 1, 0.32, 1) both;
-}
-
-.start > :nth-child(2) {
-  animation-delay: 50ms;
-}
-
-.start > :nth-child(3) {
-  animation-delay: 100ms;
-}
-
-.start > :nth-child(4),
-.start > :nth-child(5) {
-  animation-delay: 150ms;
-}
-
-@keyframes start-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
+  text-shadow: 0 2px 30px var(--on-stage-glow);
 }
 
 .start__title {
@@ -2006,8 +2196,8 @@ button {
   padding: 0 28px;
   border: 0;
   border-radius: 26px;
-  background: #fff;
-  color: #0b0b0f;
+  background: var(--play);
+  color: var(--on-play);
   font-size: 15.5px;
   font-weight: 600;
   text-shadow: none;
@@ -2025,9 +2215,9 @@ button {
   padding: 0 16px;
   border: 0;
   background: transparent;
-  color: #fff;
+  color: var(--on-stage);
   font-size: 14px;
-  opacity: 0.8;
+  opacity: 0.85;
   cursor: pointer;
 }
 
@@ -2035,7 +2225,7 @@ button {
   margin: 14px 0 0;
   font-size: 12.5px;
   opacity: 0.85;
-  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.8);
+  text-shadow: 0 1px 10px var(--on-stage-glow);
 }
 
 .app[data-phase='intro'] .top-actions,
@@ -2233,4 +2423,41 @@ button {
 
 .queue-modes button[aria-pressed='true'] {
   color: color-mix(in srgb, var(--accent) 65%, var(--text));
+}
+
+/* All five parts on one row. */
+.menu .cast {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  margin: 0;
+  overflow: visible;
+}
+
+.menu .cast__actor {
+  justify-content: center;
+  gap: 4px;
+  padding: 0 2px;
+  font-size: 12px;
+}
+
+.pill:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+/* The words are already there, so the particles arrive behind them. */
+@keyframes stage-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (pointer: coarse) {
+  .menu__segments button {
+    min-height: 36px;
+  }
+
+  .menu__more {
+    min-height: 36px;
+  }
 }
