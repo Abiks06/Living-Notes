@@ -1,7 +1,7 @@
 {
   "name": "resonance-desktop",
   "productName": "Resonance",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Your music, alive. A music player with GPU visuals that follow the music.",
   "author": "Ayomide Abikoye",
   "private": true,
@@ -9,9 +9,10 @@
   "main": "main.js",
   "scripts": {
     "site": "npm --prefix .. run build",
-    "start": "npm run site && electron .",
-    "dist": "npm run site && electron-builder --win -c.directories.output=%LOCALAPPDATA%/resonance-build",
-    "release": "npm run site && electron-builder --win --publish always"
+    "start": "npm run helper && npm run site && electron .",
+    "dist": "npm run helper && npm run site && electron-builder --win -c.directories.output=%LOCALAPPDATA%/resonance-build",
+    "release": "npm run helper && npm run site && electron-builder --win --publish always",
+    "helper": "node now-playing/build.mjs"
   },
   "devDependencies": {
     "electron": "45.2.3",
@@ -27,6 +28,8 @@
     ],
     "files": [
       "main.js",
+      "nowPlaying.js",
+      "preload.cjs",
       "package.json",
       {
         "from": "../dist",
@@ -75,7 +78,13 @@
       "owner": "Abiks06",
       "repo": "Living-Notes",
       "releaseType": "release"
-    }
+    },
+    "extraResources": [
+      {
+        "from": "now-playing/NowPlaying.exe",
+        "to": "NowPlaying.exe"
+      }
+    ]
   },
   "dependencies": {
     "electron-updater": "6.8.11"

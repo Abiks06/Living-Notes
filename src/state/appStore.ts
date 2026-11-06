@@ -10,7 +10,25 @@ export type ActiveSource =
   | { kind: 'demo'; id: string; title: string }
   | { kind: 'file'; name: string; title?: string; artist?: string }
   | { kind: 'mic' }
-  | { kind: 'tab' };
+  | { kind: 'tab'; title?: string; artist?: string };
+
+/** What Windows says is playing, while system audio is listening to it. */
+export interface LiveSong {
+  /** Changes when the song does. */
+  key: string;
+  /** The session it's playing in, which controls are sent to. */
+  id: string;
+  /** Its title as reported, which tells apart two tabs of one browser. */
+  reported: string;
+  title: string;
+  artist: string;
+  album: string;
+  art: string | null;
+  playing: boolean;
+  canToggle: boolean;
+  canNext: boolean;
+  canPrevious: boolean;
+}
 
 /** Sound coming from outside the app, which it can hear but not play, pause or skip. */
 export function isLiveSource(source: ActiveSource | null): boolean {
@@ -43,6 +61,7 @@ interface AppState {
   uiHiddenManual: boolean;
   /** L key: everything hidden, and the backdrop turned up to light the room. */
   lounge: boolean;
+  liveSong: LiveSong | null;
   recording: { state: 'idle' | 'recording'; elapsed: number; seconds: number };
   capture: { seconds: ClipLength; aspect: CaptureAspect };
   /** Camera distance multiplier while a narrow clip records. */
@@ -86,6 +105,7 @@ interface AppState {
   setCapture: (capture: Partial<AppState['capture']>) => void;
   setCaptureFraming: (captureFraming: number) => void;
   setSource: (source: ActiveSource | null) => void;
+  setLiveSong: (song: LiveSong | null) => void;
   setLoading: (label: string | null) => void;
   setMic: (mic: MicStatus) => void;
   setMicDevice: (micDevice: string | null) => void;
@@ -114,6 +134,7 @@ export const useAppStore = create<AppState>()((set) => ({
   perfOverlay: false,
   uiHiddenManual: false,
   lounge: false,
+  liveSong: null,
   recording: { state: 'idle', elapsed: 0, seconds: 15 },
   capture: { seconds: 15, aspect: 'window' },
   captureFraming: 1,
@@ -142,6 +163,7 @@ export const useAppStore = create<AppState>()((set) => ({
   setCapture: (capture) => set((state) => ({ capture: { ...state.capture, ...capture } })),
   setCaptureFraming: (captureFraming) => set({ captureFraming }),
   setSource: (source) => set({ source }),
+  setLiveSong: (liveSong) => set({ liveSong }),
   setLoading: (loading) => set({ loading }),
   setMic: (mic) => set({ mic }),
   setMicDevice: (micDevice) => set({ micDevice }),

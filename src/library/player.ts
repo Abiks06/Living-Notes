@@ -4,6 +4,7 @@ import { scoreFromMix } from '../audio/score/loadScore';
 import type { Score } from '../audio/score/score';
 import { VOICE_SAMPLE_RATE } from '../audio/score/voices';
 import { playMediaUrl } from '../audio/sources';
+import { controlLive } from '../live/nowPlaying';
 import { setSongColours } from '../settings/bindings';
 import { learnSong, switchSource } from '../state/actions';
 import { isLiveSource, useAppStore } from '../state/appStore';
@@ -182,12 +183,18 @@ function moveOn(skipped: boolean, fadeS: number): void {
 
 export function skipNext(): void {
   // Keys and media buttons land here too, and shouldn't start a song over what's being heard.
-  if (isLiveSource(app().source)) return;
+  if (isLiveSource(app().source)) {
+    controlLive('next');
+    return;
+  }
   moveOn(true, SKIP_FADE_S);
 }
 
 export function skipPrevious(): void {
-  if (isLiveSource(app().source)) return;
+  if (isLiveSource(app().source)) {
+    controlLive('previous');
+    return;
+  }
   const transport = audioEngine.transport;
   if (transport && transport.currentTime() > RESTART_AFTER_S) {
     transport.seek(0);

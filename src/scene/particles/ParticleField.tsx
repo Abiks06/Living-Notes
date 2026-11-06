@@ -99,7 +99,7 @@ export function ParticleField() {
   // A song's own title is spelled on its first drop, and Auto-VJ spells words on any song. It
   // waits until a song is under way, as rasterizing would stall a crossfade.
   useEffect(() => {
-    const titled = source?.kind === 'file' && Boolean(source.title);
+    const titled = (source?.kind === 'file' || source?.kind === 'tab') && Boolean(source.title);
     if (!simulation || (!autoDirector && !titled)) return;
     const timer = window.setTimeout(
       () => simulation.setFlashWord(flashWordFor(source, word)),

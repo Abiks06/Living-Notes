@@ -153,6 +153,8 @@ electron-builder's newer MSIX target is only in the version 27 alpha, so I'd use
 
 ### Stage 3: Now Playing (M)
 
+**Built** on branch `claude/stage-3-now-playing`. It uses a small helper of our own rather than the package below, because that package can only watch sessions, not control them.
+
 Windows app only, because a browser can't see other apps.
 
 - Show the title, artist and artwork in the player and title card.

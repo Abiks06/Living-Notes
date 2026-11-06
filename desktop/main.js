@@ -1,5 +1,6 @@
 // The Windows app: the same built site as the web version, served from inside the app.
-// There's no preload and no Node in the page, so it runs exactly as sandboxed as a website.
+// There's no Node in the page, so it's as sandboxed as a website. The preload adds one thing:
+// what's playing on this PC, and a few controls for it.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -7,6 +8,7 @@ import {
   app,
   BrowserWindow,
   desktopCapturer,
+  ipcMain,
   Menu,
   net,
   protocol,
@@ -14,12 +16,16 @@ import {
   session,
   shell,
 } from 'electron';
+import { nowPlayingHelper } from './nowPlaying.js';
 
 const SCHEME = 'resonance';
 const ORIGIN = `${SCHEME}://app`;
 const ROOT = app.getAppPath();
 const SITE = app.isPackaged ? join(ROOT, 'site') : resolve(ROOT, '../dist');
 const WINDOW_STATE = join(app.getPath('userData'), 'window.json');
+const HELPER = app.isPackaged
+  ? join(process.resourcesPath, 'NowPlaying.exe')
+  : join(ROOT, 'now-playing', 'NowPlaying.exe');
 
 const UPDATE_DELAY_MS = 10_000;
 
@@ -73,8 +79,9 @@ async function serve(request) {
   return new Response(response.body, { status: response.status, headers });
 }
 
+const fromApp = (url) => url === ORIGIN || url.startsWith(`${ORIGIN}/`);
+
 function lockDown(target) {
-  const fromApp = (url) => url === ORIGIN || url.startsWith(`${ORIGIN}/`);
   target.setPermissionRequestHandler((contents, permission, decide) => {
     decide(fromApp(contents.getURL()) && PERMISSIONS.has(permission));
   });
@@ -118,6 +125,7 @@ function openWindow() {
     backgroundColor: '#05050a',
     show: false,
     webPreferences: {
+      preload: join(ROOT, 'preload.cjs'),
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
@@ -180,6 +188,18 @@ if (!app.requestSingleInstanceLock()) {
     session.defaultSession.protocol.handle(SCHEME, serve);
     lockDown(session.defaultSession);
     main = openWindow();
+    const helper = nowPlayingHelper(HELPER, (message) =>
+      main?.webContents.send('now-playing', message),
+    );
+    const onlyTheApp =
+      (handler) =>
+      (event, ...args) => {
+        if (fromApp(event.senderFrame?.url ?? '')) handler(...args);
+      };
+    ipcMain.on('now-playing:start', onlyTheApp(helper.start));
+    ipcMain.on('now-playing:stop', onlyTheApp(helper.stop));
+    ipcMain.on('now-playing:command', onlyTheApp(helper.command));
+    app.on('before-quit', helper.stop);
     setTimeout(checkForUpdates, UPDATE_DELAY_MS);
   });
 }

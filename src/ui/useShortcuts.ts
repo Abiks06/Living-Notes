@@ -7,7 +7,7 @@ import { SCENES } from '../scene/scenes';
 import { APPEARANCES, nextAppearance, useAppearance } from '../settings/appearance';
 import { useSettings } from '../settings/settingsStore';
 import { jumpSection, setVolume, toggleLiving, toggleMute, togglePlayback } from '../state/actions';
-import { useAppStore } from '../state/appStore';
+import { isLiveSource, useAppStore } from '../state/appStore';
 
 function toggleAuto(): void {
   const settings = useSettings.getState();
@@ -50,7 +50,8 @@ export function useShortcuts(): void {
     const onKey = (event: KeyboardEvent) => {
       if (!isShortcutKey(event)) return;
       if (event.code === 'Space') {
-        if (ownsSpace(event.target) || !audioEngine.transport) return;
+        const playable = audioEngine.transport || isLiveSource(useAppStore.getState().source);
+        if (ownsSpace(event.target) || !playable) return;
         event.preventDefault();
         spaceHandled = true;
         if (!event.repeat) togglePlayback();

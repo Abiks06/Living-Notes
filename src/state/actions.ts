@@ -10,6 +10,7 @@ import { renderProofSong } from '../audio/synth/proofSong';
 import { renderDemoLoop } from '../audio/synth/renderLoop';
 import { IS_DESKTOP, LIVE_AUDIO_LABEL } from '../lib/desktop';
 import { useLibrary } from '../library/library';
+import { controlLive } from '../live/nowPlaying';
 import { onSongEnded, startPlayer } from '../library/player';
 import { restoreLibrary } from '../library/library';
 import { setSongColours } from '../settings/bindings';
@@ -202,8 +203,12 @@ export function selectMicDevice(id: string | null): void {
 }
 
 export function togglePlayback(): void {
+  if (isLiveSource(store().source)) {
+    controlLive('toggle');
+    return;
+  }
   const transport = audioEngine.transport;
-  if (!transport || isLiveSource(store().source)) return;
+  if (!transport) return;
   if (transport.paused) transport.play();
   else transport.pause();
   store().setPaused(transport.paused);

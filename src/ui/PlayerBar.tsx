@@ -1,6 +1,7 @@
 import { type CSSProperties, useEffect, useRef, useState } from 'react';
 import { audioEngine } from '../audio/AudioEngine';
 import { LIVE_AUDIO_LABEL } from '../lib/desktop';
+import { controlLive } from '../live/nowPlaying';
 import { formatTime } from '../lib/formatTime';
 import { artFor } from '../library/art';
 import { useLibrary } from '../library/library';
@@ -35,7 +36,7 @@ function describe(source: ActiveSource | null): { title: string; detail: string 
     case 'mic':
       return { title: 'Microphone', detail: 'Listening live' };
     case 'tab':
-      return { title: LIVE_AUDIO_LABEL, detail: 'Listening live' };
+      return { title: source.title ?? LIVE_AUDIO_LABEL, detail: source.artist || 'Listening live' };
     case 'file':
       return { title: source.title ?? source.name, detail: source.artist ?? '' };
     case 'demo':
@@ -101,6 +102,7 @@ export function PlayerBar() {
   const muted = useAppStore((state) => state.muted);
   const loading = useAppStore((state) => state.loading);
   const playing = useLibrary((state) => state.nowPlaying);
+  const liveSong = useAppStore((state) => state.liveSong);
   const shuffle = useLibrary((state) => state.queue.shuffle);
   const repeat = useLibrary((state) => state.queue.repeat);
   const auto = useSettings((state) => state.autoDirector);
@@ -128,7 +130,14 @@ export function PlayerBar() {
   const hasTimeline = source !== null && !live;
   const { title, detail } = describe(source);
 
+  const shownArt = live ? (liveSong?.art ?? null) : art;
+  const showPlay = live ? !liveSong?.playing : paused || !hasTimeline;
+
   const onPlay = () => {
+    if (live) {
+      controlLive('toggle');
+      return;
+    }
     if (audioEngine.transport) {
       togglePlayback();
       return;
@@ -154,8 +163,8 @@ export function PlayerBar() {
         title="Your music (Q)"
         onClick={() => setLibraryOpen(!libraryOpen)}
       >
-        {art ? (
-          <img className="player__art" src={art} alt="" />
+        {shownArt ? (
+          <img className="player__art" src={shownArt} alt="" />
         ) : (
           <span className="player__art player__art--empty" aria-hidden="true">
             <LibraryIcon />
@@ -183,7 +192,7 @@ export function PlayerBar() {
           className="control"
           aria-label="Previous"
           title="Previous (P)"
-          disabled={!playing || live}
+          disabled={live ? !liveSong?.canPrevious : !playing}
           onClick={skipPrevious}
         >
           <SkipIcon style={{ transform: 'scaleX(-1)' }} />
@@ -191,19 +200,23 @@ export function PlayerBar() {
         <button
           type="button"
           className="control control--play"
-          aria-label={live ? 'Listening live' : paused || !hasTimeline ? 'Play' : 'Pause'}
-          title={live ? 'Listening live. Pick a song to play it instead.' : 'Play or pause (Space)'}
-          disabled={live}
+          aria-label={live && !liveSong ? 'Listening live' : showPlay ? 'Play' : 'Pause'}
+          title={
+            live && !liveSong
+              ? 'Listening live. Pick a song to play it instead.'
+              : 'Play or pause (Space)'
+          }
+          disabled={live && !liveSong?.canToggle}
           onClick={onPlay}
         >
-          {paused || !hasTimeline ? <PlayIcon /> : <PauseIcon />}
+          {showPlay ? <PlayIcon /> : <PauseIcon />}
         </button>
         <button
           type="button"
           className="control"
           aria-label="Next"
           title="Next (N)"
-          disabled={!playing || live}
+          disabled={live ? !liveSong?.canNext : !playing}
           onClick={skipNext}
         >
           <SkipIcon />

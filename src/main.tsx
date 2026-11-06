@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { trackFocusSource } from './lib/keyboard';
+import { watchNowPlaying } from './live/nowPlaying';
 import { watchInstallOffer } from './pwa/install';
 import { registerServiceWorker } from './pwa/register';
 import { initAppearance } from './settings/appearance';
@@ -15,6 +16,7 @@ initUrlSync();
 trackFocusSource();
 bindSettings();
 watchInstallOffer();
+watchNowPlaying();
 registerServiceWorker();
 
 const root = document.getElementById('root');

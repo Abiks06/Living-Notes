@@ -18,6 +18,9 @@ const MIN_SHOW_S = 8;
 const DROP_LANDED = 0.9;
 /** How far up the climb the title starts to form. */
 const TITLE_FROM = 0.3;
+/** How long a streamed song plays before its name appears, and what counts as playing. */
+const LIVE_TITLE_AFTER_S = 20;
+const LIVE_HEARD_GATE = 0.5;
 
 /** Feeds scene selection into the director and advances it, right after audio analysis. */
 export function SceneDriver() {
@@ -28,6 +31,7 @@ export function SceneDriver() {
   const mounted = useRef(false);
   const showClock = useRef({ part: -1, held: MIN_SHOW_S });
   const wordSpent = useRef(false);
+  const liveHeard = useRef(0);
 
   useEffect(() => {
     // The first scene (e.g. from a share link) appears directly; later changes fly over.
@@ -40,6 +44,7 @@ export function SceneDriver() {
     auto.newTrack();
     shows.clear();
     wordSpent.current = false;
+    liveHeard.current = 0;
     showClock.current = { part: -1, held: MIN_SHOW_S };
   }, [source]);
 
@@ -66,6 +71,19 @@ export function SceneDriver() {
           sceneByKey(settings.scene),
           audioFeatures.snareCount,
           climbing,
+          readingTime(flashWordFor(source, settings.word)),
+        );
+        auto.wordShown();
+      }
+    }
+    // Nothing says when live sound will open up, so a streamed song's name comes once it's going.
+    if (source?.kind === 'tab' && source.title && !reducedMotion && !wordSpent.current) {
+      if (audioFeatures.gate >= LIVE_HEARD_GATE) liveHeard.current += dt;
+      if (liveHeard.current >= LIVE_TITLE_AFTER_S && !sceneDirector.wordFlash) {
+        wordSpent.current = sceneDirector.flashWord(
+          sceneByKey(settings.scene),
+          audioFeatures.snareCount,
+          false,
           readingTime(flashWordFor(source, settings.word)),
         );
         auto.wordShown();
