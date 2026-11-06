@@ -343,6 +343,21 @@ npm run build      # static site in dist/
 
 **Deploying:** it's a static site with no backend or environment variables. On Vercel, import the repository and `vercel.json` sets the rest: the build, Node 24, year-long caching for hashed files, and a strict content security policy. The microphone and tab audio require HTTPS, which Vercel provides. Don't add a catch-all rewrite: the app has one page, and demo tracks rely on a missing file returning 404.
 
+**Installing:** the site is also a Progressive Web App, so Chrome and Edge on Windows and Android can install it with no store. It then opens in its own window and starts offline. Install it from the browser's address bar or menu, or from **Install app** in the Visuals menu, which only shows when the browser offers it. `npm run build` writes `dist/sw.js` from `src/pwa/sw.js`, listing the page, the icons and everything in `dist/assets`. Those are the only files it ever stores, so music never enters its cache, and every other request goes straight to the server. The page itself comes from the server whenever it answers, so a deploy shows on the next load, and from the cache if the server fails or takes over 3 seconds. A new worker waits until the old version's tabs close, so an open tab keeps its own lazy chunks. Keep `public/audio` out of the `SHELL` list in `vite.config.ts`: offline, demos use their synthesized loops. The worker only runs in production builds, and `vercel.json` stops `sw.js` being cached so browsers see updates straight away.
+
+**Windows app:** `desktop/` wraps the same built site in Electron, with its own `package.json` so website builds never download it. It adds one thing a browser can't do: **System audio** hears whatever Windows is playing, with no share dialog. Everything else is the website, served from a private `resonance://` scheme with the same security headers as `vercel.json`, no Node in the page, and no network access from the page. The app makes one request of its own: it asks GitHub for a newer version 10 seconds after launch, downloads it quietly, and installs it when the app next closes. That request carries nothing about your music.
+
+```bash
+cd desktop
+npm ci
+npm start      # build the site and run the app
+npm run dist   # build the installer without publishing
+```
+
+The installer lands in `%LOCALAPPDATA%/resonance-build`, because OneDrive locks build files mid-sync when they sit in a synced folder. It isn't code-signed, so Windows SmartScreen warns on first run.
+
+**Releasing the app:** raise `version` in `desktop/package.json`, commit, then push a matching tag such as `v0.1.1`. `.github/workflows/release.yml` builds the installer and publishes the release, and installed apps pick it up on their next launch. Publish the first release before deploying the site: the **Get the Windows app** link on the start screen, shown to Windows visitors, points at the latest release and is a 404 until one exists.
+
 ### Browser support
 
 |                     | Chrome / Edge | Firefox                    | Safari                     |

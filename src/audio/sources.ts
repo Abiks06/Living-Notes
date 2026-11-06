@@ -1,4 +1,5 @@
 import { AudioError } from './errors';
+import { IS_DESKTOP } from '../lib/desktop';
 
 /** Play/pause/seek controls. Positions are in seconds. */
 export interface Transport {
@@ -236,7 +237,8 @@ function liveStreamHandle(
 export function isTabAudioSupported(): boolean {
   return (
     typeof navigator.mediaDevices?.getDisplayMedia === 'function' &&
-    !window.matchMedia('(pointer: coarse)').matches
+    // Phones can't share audio, but the Windows app can on a touch screen.
+    (IS_DESKTOP || !window.matchMedia('(pointer: coarse)').matches)
   );
 }
 
@@ -272,5 +274,7 @@ export async function openTabAudio(ctx: AudioContext): Promise<PlaybackHandle> {
     stream.getTracks().forEach((track) => track.stop());
     throw new AudioError('tab-no-audio', 'The shared surface had no audio.');
   }
+  // In the app the sound comes from Windows itself, so the screen capture has no job to do.
+  if (IS_DESKTOP) stream.getVideoTracks().forEach((track) => track.stop());
   return liveStreamHandle(ctx, stream, audioTracks, 'tab');
 }

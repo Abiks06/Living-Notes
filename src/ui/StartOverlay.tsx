@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { IS_DESKTOP, offersWindowsApp, WINDOWS_APP_URL } from '../lib/desktop';
 import {
   addFolderFiles,
   canRememberFolder,
@@ -8,6 +9,8 @@ import {
 } from '../library/library';
 import { ensureStarted, startExperience } from '../state/actions';
 import { useAppStore } from '../state/appStore';
+
+const WINDOWS_APP = offersWindowsApp(navigator.userAgent, IS_DESKTOP);
 
 /** The first screen: one thing to do, and the living cloud behind it. */
 export function StartOverlay() {
@@ -78,6 +81,16 @@ export function StartOverlay() {
             ? `${count} ${count === 1 ? 'song' : 'songs'} ready · Your music stays on this device.`
             : 'Your music stays on this device.')}
       </p>
+      {WINDOWS_APP && (
+        <a
+          className="start__app"
+          href={WINDOWS_APP_URL}
+          rel="noreferrer"
+          title="Free. It can also hear anything playing on this PC. Windows may warn you the first time, because the app is new."
+        >
+          Get the Windows app
+        </a>
+      )}
       <input
         id="start-folder"
         type="file"

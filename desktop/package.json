@@ -1,0 +1,83 @@
+{
+  "name": "resonance-desktop",
+  "productName": "Resonance",
+  "version": "0.1.0",
+  "description": "Your music, alive. A music player with GPU visuals that follow the music.",
+  "author": "Ayomide Abikoye",
+  "private": true,
+  "type": "module",
+  "main": "main.js",
+  "scripts": {
+    "site": "npm --prefix .. run build",
+    "start": "npm run site && electron .",
+    "dist": "npm run site && electron-builder --win -c.directories.output=%LOCALAPPDATA%/resonance-build",
+    "release": "npm run site && electron-builder --win --publish always"
+  },
+  "devDependencies": {
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "app.livingnotes.resonance",
+    "productName": "Resonance",
+    "asar": true,
+    "compression": "maximum",
+    "electronLanguages": [
+      "en-US"
+    ],
+    "files": [
+      "main.js",
+      "package.json",
+      {
+        "from": "../dist",
+        "to": "site",
+        "filter": [
+          "**/*",
+          "!sw.js",
+          "!manifest.webmanifest"
+        ]
+      },
+      {
+        "from": "..",
+        "to": ".",
+        "filter": [
+          "vercel.json"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "../public/icons/icon-512.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "shortcutName": "Resonance",
+      "artifactName": "Resonance-Setup.${ext}"
+    },
+    "electronFuses": {
+      "runAsNode": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true,
+      "grantFileProtocolExtraPrivileges": false
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "Abiks06",
+      "repo": "Living-Notes",
+      "releaseType": "release"
+    }
+  },
+  "dependencies": {
+    "electron-updater": "6.8.11"
+  }
+}

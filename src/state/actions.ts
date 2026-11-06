@@ -8,6 +8,7 @@ import type { Score } from '../audio/score/score';
 import { summarise } from '../audio/score/songMap';
 import { renderProofSong } from '../audio/synth/proofSong';
 import { renderDemoLoop } from '../audio/synth/renderLoop';
+import { IS_DESKTOP, LIVE_AUDIO_LABEL } from '../lib/desktop';
 import { useLibrary } from '../library/library';
 import { onSongEnded, startPlayer } from '../library/player';
 import { restoreLibrary } from '../library/library';
@@ -160,7 +161,7 @@ export async function enableMic(): Promise<void> {
 
 /** Visualize another tab or the system audio (Chrome/Edge desktop). */
 export async function enableTabAudio(): Promise<void> {
-  const ok = await switchSource('Tab audio', openTabAudio);
+  const ok = await switchSource(LIVE_AUDIO_LABEL, openTabAudio);
   if (ok) {
     forgetSong();
     store().setSource({ kind: 'tab' });
@@ -273,15 +274,19 @@ function reportError(error: unknown): void {
     case 'tab-no-audio':
       s.showNotice({
         tone: 'info',
-        title: 'No audio was shared',
-        body: 'In the share dialog, pick a browser tab and switch on “Share tab audio”. Windows can share system audio from the “Entire screen” option.',
+        title: IS_DESKTOP ? 'No sound to listen to' : 'No audio was shared',
+        body: IS_DESKTOP
+          ? 'Windows didn’t offer any sound. Check that an output device is connected.'
+          : 'In the share dialog, pick a browser tab and switch on “Share tab audio”. Windows can share system audio from the “Entire screen” option.',
       });
       return;
     case 'tab-unsupported':
       s.showNotice({
         tone: 'info',
-        title: 'Tab audio needs Chrome or Edge',
-        body: 'This browser can’t share another tab’s sound. Use a demo track, your mic, or drop in a file instead.',
+        title: IS_DESKTOP ? 'System audio didn’t start' : 'Tab audio needs Chrome or Edge',
+        body: IS_DESKTOP
+          ? 'Windows wouldn’t share its sound. Use a demo track, your mic, or drop in a file instead.'
+          : 'This browser can’t share another tab’s sound. Use a demo track, your mic, or drop in a file instead.',
       });
       return;
     case 'decode':

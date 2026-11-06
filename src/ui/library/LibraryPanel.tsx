@@ -20,6 +20,7 @@ import { upcoming } from '../../library/queue';
 import { formatTime } from '../../lib/formatTime';
 import { DEMO_TRACKS } from '../../audio/demoTracks';
 import { isTabAudioSupported } from '../../audio/sources';
+import { IS_DESKTOP, LIVE_AUDIO_LABEL } from '../../lib/desktop';
 import { enableMic, enableTabAudio, ensureStarted, startExperience } from '../../state/actions';
 import { useAppStore } from '../../state/appStore';
 import { ScrollText } from '../ScrollText';
@@ -278,12 +279,16 @@ function OtherSources() {
           <button
             type="button"
             aria-pressed={source?.kind === 'tab'}
-            title="Visualize another tab: Spotify, YouTube, SoundCloud…"
+            title={
+              IS_DESKTOP
+                ? 'Visualize whatever is playing on this PC'
+                : 'Visualize another tab: Spotify, YouTube, SoundCloud…'
+            }
             onClick={() => {
               if (ensureStarted()) void enableTabAudio();
             }}
           >
-            <TabAudioIcon /> Tab audio
+            <TabAudioIcon /> {LIVE_AUDIO_LABEL}
           </button>
         )}
       </div>

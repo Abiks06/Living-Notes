@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useLibrary } from '../library/library';
+import { installApp, useInstallOffer } from '../pwa/install';
 import { MORPH_SHAPES, SCENES } from '../scene/scenes';
 import { APPEARANCES, useAppearance } from '../settings/appearance';
 import { useSettings } from '../settings/settingsStore';
@@ -28,6 +29,7 @@ export function VisualsMenu({ onClose }: { onClose: () => void }) {
   const setArtColours = useLibrary((state) => state.setArtColours);
   const appearance = useAppearance((state) => state.appearance);
   const setAppearance = useAppearance((state) => state.setAppearance);
+  const canInstall = useInstallOffer((state) => state.offer !== null);
   const showing = SCENES.find((preset) => preset.key === scene)?.label ?? scene;
   const box = useRef<HTMLDivElement>(null);
 
@@ -160,16 +162,28 @@ export function VisualsMenu({ onClose }: { onClose: () => void }) {
 
       <footer className="menu__footer">
         <MusicDna />
-        <button
-          type="button"
-          className="menu__more"
-          onClick={() => {
-            onClose();
-            useAppStore.getState().setStudioOpen(true);
-          }}
-        >
-          All settings
-        </button>
+        <div className="menu__links">
+          {canInstall && (
+            <button
+              type="button"
+              className="menu__more"
+              title="Open Resonance in its own window"
+              onClick={installApp}
+            >
+              Install app
+            </button>
+          )}
+          <button
+            type="button"
+            className="menu__more"
+            onClick={() => {
+              onClose();
+              useAppStore.getState().setStudioOpen(true);
+            }}
+          >
+            All settings
+          </button>
+        </div>
       </footer>
     </div>
   );

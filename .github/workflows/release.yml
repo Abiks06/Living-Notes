@@ -1,0 +1,61 @@
+# Builds the Windows app and publishes it as a GitHub release when a version tag is pushed.
+# Installed apps update from these releases, and the website's download link points at them.
+name: Release Windows app
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+# One at a time, so an older version can't finish last and take over as the latest.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Check the tag matches the app version
+        shell: bash
+        run: test "v$(node -p "require('./desktop/package.json').version")" = "$GITHUB_REF_NAME"
+
+      - name: Install the site's dependencies
+        run: npm ci
+
+      - name: Install the app's dependencies
+        run: npm ci
+        working-directory: desktop
+
+      # Opened first because electron-builder uploads files in parallel, and with no release
+      # to upload into, each upload creates its own. Users also never see a half-finished one.
+      - name: Open a draft release
+        shell: bash
+        run: |
+          gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 ||
+            gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "Resonance $GITHUB_REF_NAME" --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and upload
+        run: npm run release
+        working-directory: desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EP_DRAFT: 'true'
+
+      - name: Publish once everything is there
+        shell: bash
+        run: |
+          test "$(gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets | length')" = 3
+          gh release edit "$GITHUB_REF_NAME" --draft=false --latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
