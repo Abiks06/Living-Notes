@@ -1,3 +1,4 @@
+import { isReturning } from './returning';
 import { create } from 'zustand';
 import type { Actor } from '../audio/cast';
 import type { SongSummary } from '../audio/score/songMap';
@@ -128,7 +129,8 @@ interface AppState {
 let noticeId = 0;
 
 export const useAppStore = create<AppState>()((set) => ({
-  phase: 'intro',
+  // Someone who's brought music here before goes straight to it.
+  phase: isReturning() ? 'running' : 'intro',
   interacted: false,
   studioOpen: false,
   perfOverlay: false,

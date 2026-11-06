@@ -6,10 +6,10 @@ import { VOICE_SAMPLE_RATE } from '../audio/score/voices';
 import { playMediaUrl } from '../audio/sources';
 import { controlLive } from '../live/nowPlaying';
 import { setSongColours } from '../settings/bindings';
-import { learnSong, switchSource } from '../state/actions';
+import { ensureStarted, learnSong, switchSource, togglePlayback } from '../state/actions';
 import { isLiveSource, useAppStore } from '../state/appStore';
 import { artFor, paletteFor } from './art';
-import { addLooseFiles, type Track, useLibrary } from './library';
+import { addLooseFiles, reopenFolder, type Track, useLibrary, writeLastSong } from './library';
 import {
   addToQueue,
   advance,
@@ -21,6 +21,7 @@ import {
   type PlayQueue,
   setShuffle,
 } from './queue';
+import { canResume, resumeFrom } from './resume';
 import { readCachedScore, writeCachedScore } from './storage';
 
 /** A quick blend for skipping, as anyone pressing next wants the new song now. */
@@ -32,6 +33,8 @@ const COMING_UP_S = 12;
 const RESTART_AFTER_S = 3;
 /** Leading silence worth skipping when a song starts. */
 const MIN_LEAD_IN_S = 0.3;
+/** How often the place in a song is saved, for carrying on next time. */
+const REMEMBER_EVERY_MS = 4000;
 
 const library = () => useLibrary.getState();
 const app = () => useAppStore.getState();
@@ -41,6 +44,8 @@ const scores = new Map<string, Score>();
 let learning: string | null = null;
 let starting = 0;
 let handingOver = false;
+let carryOnFrom: { id: string; seconds: number } | null = null;
+let remembered = 0;
 
 function setQueue(queue: PlayQueue): PlayQueue {
   library().setQueue(queue);
@@ -122,8 +127,11 @@ async function start(track: Track, fadeS: number): Promise<boolean> {
   }
   if (request !== starting) return true;
 
-  const lead = known?.musicStart ?? 0;
+  const carriedOn = carryOnFrom?.id === track.id ? carryOnFrom.seconds : 0;
+  carryOnFrom = null;
+  const lead = Math.max(known?.musicStart ?? 0, carriedOn);
   if (lead >= MIN_LEAD_IN_S) audioEngine.transport?.seek(lead);
+  useLibrary.setState({ resume: null });
   library().setNowPlaying(track);
   library().setComingUp(null);
   showSource(track);
@@ -155,6 +163,33 @@ export function playTracks(ids: readonly string[], from: string | null): void {
 }
 
 /** Plays what was dropped or picked; several files become a queue, in track-number order. */
+/** The Play button and Space: whatever "play" means right now. */
+export function playOrResume(): void {
+  if (audioEngine.transport || isLiveSource(app().source)) {
+    togglePlayback();
+    return;
+  }
+  const { resume, saved, tracks, byId, setOpen } = library();
+  if (saved) {
+    // Asked for first: the browser only allows it straight from the click.
+    const opening = reopenFolder();
+    if (ensureStarted()) void opening.then(playOrResume).catch(() => setOpen(true));
+    return;
+  }
+  if (tracks.length === 0) {
+    setOpen(true);
+    return;
+  }
+  if (!ensureStarted()) return;
+  const track = resume ? byId.get(resume.id) : undefined;
+  if (resume && track)
+    carryOnFrom = { id: track.id, seconds: resumeFrom(resume.position, track.duration) };
+  playTracks(
+    tracks.map((each) => each.id),
+    track?.id ?? null,
+  );
+}
+
 export async function playFiles(files: readonly File[]): Promise<void> {
   const tracks = await addLooseFiles(files);
   const sorted = [...tracks].sort((a, b) =>
@@ -245,9 +280,25 @@ export function onSongEnded(): void {
 }
 
 /** A plain timer rather than the frame clock, because the page can be hidden while it plays. */
+/** Keeps the place in the song, so it can be picked up next time. */
+function remember(): void {
+  const { nowPlaying } = library();
+  const position = audioEngine.transport?.currentTime() ?? 0;
+  const now = performance.now();
+  if (!nowPlaying || !canResume(nowPlaying.id) || now - remembered < REMEMBER_EVERY_MS) return;
+  remembered = now;
+  writeLastSong({
+    id: nowPlaying.id,
+    title: nowPlaying.title,
+    artist: nowPlaying.artist,
+    position,
+  });
+}
+
 function watch(): void {
   const transport = audioEngine.transport;
   const { nowPlaying, queue, crossfade } = library();
+  remember();
   if (!transport || !nowPlaying || transport.paused) return;
   const left = musicEnd(transport.duration) - transport.currentTime();
   if (!Number.isFinite(left)) return;

@@ -2201,6 +2201,18 @@ button {
   text-shadow: 0 2px 30px var(--on-stage-glow);
 }
 
+/* The welcome in the page itself waits a moment: most of the time the app is up first, and
+   someone coming back should never see it. */
+.app[data-static] .start {
+  animation: start-arrives 200ms ease-out 350ms both;
+}
+
+@keyframes start-arrives {
+  from {
+    opacity: 0;
+  }
+}
+
 .start__title {
   margin: 0;
   font-size: clamp(46px, 9vw, 92px);

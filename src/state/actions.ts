@@ -15,6 +15,7 @@ import { onSongEnded, startPlayer } from '../library/player';
 import { restoreLibrary } from '../library/library';
 import { setSongColours } from '../settings/bindings';
 import { isLiveSource, useAppStore } from './appStore';
+import { markReturning } from './returning';
 
 const AUDIO_EXTENSIONS = /\.(mp3|wav|ogg|oga|m4a|aac|flac|webm|opus)$/i;
 
@@ -165,6 +166,7 @@ export async function enableTabAudio(): Promise<void> {
   const ok = await switchSource(LIVE_AUDIO_LABEL, openTabAudio);
   if (ok) {
     forgetSong();
+    markReturning();
     store().setSource({ kind: 'tab' });
   }
 }

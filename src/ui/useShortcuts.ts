@@ -2,11 +2,17 @@ import { useEffect } from 'react';
 import { audioEngine } from '../audio/AudioEngine';
 import { isShortcutKey, ownsSpace } from '../lib/keyboard';
 import { useLibrary } from '../library/library';
-import { skipNext, skipPrevious, toggleRepeat, toggleShuffle } from '../library/player';
+import {
+  playOrResume,
+  skipNext,
+  skipPrevious,
+  toggleRepeat,
+  toggleShuffle,
+} from '../library/player';
 import { SCENES } from '../scene/scenes';
 import { APPEARANCES, nextAppearance, useAppearance } from '../settings/appearance';
 import { useSettings } from '../settings/settingsStore';
-import { jumpSection, setVolume, toggleLiving, toggleMute, togglePlayback } from '../state/actions';
+import { jumpSection, setVolume, toggleLiving, toggleMute } from '../state/actions';
 import { isLiveSource, useAppStore } from '../state/appStore';
 
 function toggleAuto(): void {
@@ -50,11 +56,14 @@ export function useShortcuts(): void {
     const onKey = (event: KeyboardEvent) => {
       if (!isShortcutKey(event)) return;
       if (event.code === 'Space') {
-        const playable = audioEngine.transport || isLiveSource(useAppStore.getState().source);
+        const playable =
+          audioEngine.transport ||
+          isLiveSource(useAppStore.getState().source) ||
+          useLibrary.getState().resume;
         if (ownsSpace(event.target) || !playable) return;
         event.preventDefault();
         spaceHandled = true;
-        if (!event.repeat) togglePlayback();
+        if (!event.repeat) playOrResume();
         return;
       }
       // A focused slider already uses the arrow keys for itself.

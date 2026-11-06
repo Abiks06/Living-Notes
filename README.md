@@ -333,6 +333,8 @@ npm run typecheck  # TypeScript, strict
 npm run build      # static site in dist/
 ```
 
+**Coming back:** the welcome screen is only for a first visit. Once someone has opened music, the app starts on their library, with the last song waiting in the player at the point they left it. Demos stay under **More** in the library.
+
 **Demo tracks:** drop royalty-free files at `public/audio/demo-1.mp3` to `demo-4.mp3`. Titles live in `src/audio/demoTracks.ts`. Until then, each preset plays a loop synthesized in the browser with an `OfflineAudioContext`.
 
 **Audio bench:** with the dev server running, paste this into the browser console. It takes about 20 seconds.
