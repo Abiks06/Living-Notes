@@ -28,11 +28,11 @@ function serviceWorker(): Plugin {
         .sort()
         .map((name) => `/${name}`);
       const page = bundle['index.html'];
-      const version = createHash('sha256')
+      const hash = createHash('sha256')
         .update(files.join())
-        .update(page?.type === 'asset' ? page.source : '')
-        .digest('hex')
-        .slice(0, 12);
+        .update(page?.type === 'asset' ? page.source : '');
+      for (const path of SHELL) if (path !== '/') hash.update(readFileSync(`public${path}`));
+      const version = hash.digest('hex').slice(0, 12);
       this.emitFile({
         type: 'asset',
         fileName: 'sw.js',

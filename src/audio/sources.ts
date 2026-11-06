@@ -237,7 +237,8 @@ function liveStreamHandle(
 export function isTabAudioSupported(): boolean {
   return (
     typeof navigator.mediaDevices?.getDisplayMedia === 'function' &&
-    !window.matchMedia('(pointer: coarse)').matches
+    // Phones can't share audio, but the Windows app can on a touch screen.
+    (IS_DESKTOP || !window.matchMedia('(pointer: coarse)').matches)
   );
 }
 

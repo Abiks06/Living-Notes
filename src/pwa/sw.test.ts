@@ -14,11 +14,11 @@ function loadWorker(cached: Map<string, string>, network: () => Promise<string>)
     addEventListener: (type: string, listener: Listener) => listeners.set(type, listener),
   };
   const caches = {
-    open: async () => ({
+    open: vi.fn(async () => ({
       addAll: async (files: string[]) => {
         added.push(...files);
       },
-    }),
+    })),
     match: async (request: string | { url: string }) =>
       cached.get(typeof request === 'string' ? request : new URL(request.url).pathname),
     keys: async () => ['resonance-old', 'resonance-v1', 'someone-elses'],
@@ -74,7 +74,13 @@ describe('service worker', () => {
   it('only stores the build’s own files, and only while installing', async () => {
     await worker.lifecycle('install');
     expect(worker.added).toEqual(['/', '/favicon.svg', ASSET]);
-    expect(source).not.toMatch(/\.put\(/);
+  });
+
+  it('writes nothing when a listed file has to come from the network', async () => {
+    const online = loadWorker(new Map(), async () => 'fresh file');
+    const respondWith = online.fetchEvent(ASSET);
+    await expect(respondWith.mock.calls[0]?.[0]).resolves.toBe('fresh file');
+    expect(online.caches.open).not.toHaveBeenCalled();
   });
 
   it('serves listed files from the cache', async () => {

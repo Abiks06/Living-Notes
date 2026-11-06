@@ -9,6 +9,11 @@ on:
 permissions:
   contents: write
 
+# One at a time, so an older version can't finish last and take over as the latest.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: windows-latest
@@ -34,7 +39,9 @@ jobs:
       # to upload into, each upload creates its own. Users also never see a half-finished one.
       - name: Open a draft release
         shell: bash
-        run: gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "Resonance $GITHUB_REF_NAME" --generate-notes
+        run: |
+          gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 ||
+            gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "Resonance $GITHUB_REF_NAME" --generate-notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
