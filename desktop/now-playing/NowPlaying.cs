@@ -2,14 +2,17 @@
 // It writes one JSON message per line to stdout, reads commands from stdin, and exits when stdin
 // closes, so it can't outlive the app. It only runs while System audio is on.
 //
+// Every Windows call happens on the one main thread. These objects refuse to be used from a
+// thread they weren't made for, which is what async continuations would do.
+//
 // Built by build.mjs with the compiler that comes with Windows, which stops at C# 5.
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using Windows.Foundation;
 using Windows.Media.Control;
 using Windows.Storage.Streams;
@@ -24,23 +27,26 @@ static class NowPlaying
     static readonly object Writing = new object();
     static readonly HashSet<string> ArtSent = new HashSet<string>();
     static readonly AutoResetEvent Changed = new AutoResetEvent(false);
+    static readonly ConcurrentQueue<string> Commands = new ConcurrentQueue<string>();
     static TextWriter output;
 
+    [MTAThread]
     static void Main()
     {
         output = new StreamWriter(Console.OpenStandardOutput(), new UTF8Encoding(false));
-        Run().GetAwaiter().GetResult();
-    }
-
-    static async Task Run()
-    {
-        manager = await Done(GlobalSystemMediaTransportControlsSessionManager.RequestAsync());
+        manager = Wait(GlobalSystemMediaTransportControlsSessionManager.RequestAsync());
         new Thread(ReadCommands) { IsBackground = true }.Start();
 
         string last = null;
         while (true)
         {
-            string snapshot = await Snapshot();
+            string command;
+            while (Commands.TryDequeue(out command))
+            {
+                string[] parts = command.Split('\t');
+                if (parts.Length == 3) Perform(parts[0], parts[1], parts[2]);
+            }
+            string snapshot = Snapshot();
             if (snapshot != last)
             {
                 last = snapshot;
@@ -50,16 +56,16 @@ static class NowPlaying
         }
     }
 
-    /** Windows' own async operations, waited for without needing the .NET helpers for them. */
-    static Task<T> Done<T>(IAsyncOperation<T> operation)
+    /** Waits right here, so the work carries on on this thread and no other. */
+    static T Wait<T>(IAsyncOperation<T> operation)
     {
-        var result = new TaskCompletionSource<T>();
-        operation.Completed = (finished, status) =>
+        using (var finished = new ManualResetEventSlim(false))
         {
-            if (status == AsyncStatus.Completed) result.SetResult(finished.GetResults());
-            else result.SetException(new InvalidOperationException(status.ToString()));
-        };
-        return result.Task;
+            operation.Completed = (done, status) => finished.Set();
+            finished.Wait();
+        }
+        if (operation.Status == AsyncStatus.Completed) return operation.GetResults();
+        throw operation.ErrorCode ?? new InvalidOperationException(operation.Status.ToString());
     }
 
     static void Send(string line)
@@ -78,14 +84,13 @@ static class NowPlaying
         var input = new StreamReader(Console.OpenStandardInput(), new UTF8Encoding(false));
         while ((line = input.ReadLine()) != null)
         {
-            string[] parts = line.Split('\t');
-            if (parts.Length == 3) Perform(parts[0], parts[1], parts[2]).Wait();
+            Commands.Enqueue(line);
             Changed.Set();
         }
         Environment.Exit(0);
     }
 
-    static async Task Perform(string verb, string id, string title)
+    static void Perform(string verb, string id, string title)
     {
         try
         {
@@ -93,14 +98,14 @@ static class NowPlaying
             foreach (var session in manager.GetSessions())
             {
                 if (session.SourceAppUserModelId != id) continue;
-                var media = await Done(session.TryGetMediaPropertiesAsync());
+                var media = Wait(session.TryGetMediaPropertiesAsync());
                 if (target == null || media.Title == title) target = session;
                 if (media.Title == title) break;
             }
             if (target == null) return;
-            if (verb == "toggle") await Done(target.TryTogglePlayPauseAsync());
-            else if (verb == "next") await Done(target.TrySkipNextAsync());
-            else if (verb == "previous") await Done(target.TrySkipPreviousAsync());
+            if (verb == "toggle") Wait(target.TryTogglePlayPauseAsync());
+            else if (verb == "next") Wait(target.TrySkipNextAsync());
+            else if (verb == "previous") Wait(target.TrySkipPreviousAsync());
         }
         catch (Exception)
         {
@@ -108,7 +113,7 @@ static class NowPlaying
         }
     }
 
-    static async Task<string> Snapshot()
+    static string Snapshot()
     {
         var json = new StringBuilder("{\"type\":\"sessions\",\"sessions\":[");
         bool first = true;
@@ -116,7 +121,7 @@ static class NowPlaying
         {
             try
             {
-                var media = await Done(session.TryGetMediaPropertiesAsync());
+                var media = Wait(session.TryGetMediaPropertiesAsync());
                 var playback = session.GetPlaybackInfo();
                 var timeline = session.GetTimelineProperties();
                 var controls = playback.Controls;
@@ -137,7 +142,7 @@ static class NowPlaying
                 json.Append(",\"canNext\":").Append(controls.IsNextEnabled ? "true" : "false");
                 json.Append(",\"canPrevious\":").Append(controls.IsPreviousEnabled ? "true" : "false");
                 json.Append('}');
-                if (ArtSent.Add(key)) await SendArt(key, media.Thumbnail);
+                if (ArtSent.Add(key)) SendArt(key, media.Thumbnail);
             }
             catch (Exception)
             {
@@ -147,14 +152,14 @@ static class NowPlaying
         return json.Append("]}").ToString();
     }
 
-    static async Task SendArt(string key, IRandomAccessStreamReference thumbnail)
+    static void SendArt(string key, IRandomAccessStreamReference thumbnail)
     {
         if (thumbnail == null) return;
-        var stream = await Done(thumbnail.OpenReadAsync());
+        var stream = Wait(thumbnail.OpenReadAsync());
         if (stream.Size == 0 || stream.Size > MaxArtBytes) return;
         var bytes = new byte[stream.Size];
         var reader = new DataReader(stream);
-        await Done<uint>(reader.LoadAsync((uint)stream.Size));
+        Wait<uint>(reader.LoadAsync((uint)stream.Size));
         reader.ReadBytes(bytes);
         string type = string.IsNullOrEmpty(stream.ContentType) ? "image/png" : stream.ContentType;
         string url = "data:" + type + ";base64," + Convert.ToBase64String(bytes);

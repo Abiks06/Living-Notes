@@ -8,6 +8,7 @@ const session = (id: string, status: string, title = 'A Song'): MediaSession => 
   artist: 'An Artist',
   album: '',
   status,
+  updated: 0,
   canToggle: true,
   canNext: true,
   canPrevious: true,
@@ -37,8 +38,21 @@ describe('pickSession', () => {
     expect(pickSession(list, null)).toBeNull();
   });
 
-  it('doesn’t guess at something paused that it wasn’t already showing', () => {
-    expect(pickSession([session('Spotify', 'paused')], null)).toBeNull();
+  it('offers the last one used when nothing is playing, so Play can start it', () => {
+    const list = [
+      { ...session('Chrome', 'paused'), updated: 100 },
+      { ...session('Spotify', 'paused'), updated: 200 },
+    ];
+    expect(pickSession(list, null)?.id).toBe('Spotify');
+  });
+
+  it('isn’t put off by this app being what Windows calls current', () => {
+    const list = [session('app.livingnotes.resonance', 'playing'), session('Spotify', 'paused')];
+    expect(pickSession(list, null)?.id).toBe('Spotify');
+  });
+
+  it('has nothing to offer when nothing else is open', () => {
+    expect(pickSession([session('app.livingnotes.resonance', 'playing')], null)).toBeNull();
   });
 });
 

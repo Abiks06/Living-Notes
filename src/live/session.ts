@@ -8,6 +8,8 @@ export interface MediaSession {
   artist: string;
   album: string;
   status: string;
+  /** When the app last reported its place in the song, in milliseconds. */
+  updated: number;
   canToggle: boolean;
   canNext: boolean;
   canPrevious: boolean;
@@ -18,7 +20,8 @@ const OWN_SESSION = 'app.livingnotes.resonance';
 
 /**
  * Which session system audio is hearing. Something playing beats something paused, and the one
- * already showing wins a tie, so two apps playing at once don't swap back and forth.
+ * already showing wins a tie, so two apps playing at once don't swap back and forth. With nothing
+ * playing, the last one used is offered, so Play can start it from here.
  */
 export function pickSession(
   sessions: readonly MediaSession[],
@@ -27,7 +30,8 @@ export function pickSession(
   const others = sessions.filter((session) => session.id !== OWN_SESSION && session.title);
   const playing = others.filter((session) => session.status === 'playing');
   const current = (list: readonly MediaSession[]) => list.find((s) => s.id === currentId);
-  return current(playing) ?? playing[0] ?? current(others) ?? null;
+  const latest = [...others].sort((a, b) => b.updated - a.updated)[0];
+  return current(playing) ?? playing[0] ?? current(others) ?? latest ?? null;
 }
 
 /**

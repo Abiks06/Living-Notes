@@ -2,7 +2,13 @@ import { audioEngine, type PlayOptions } from '../audio/AudioEngine';
 import type { Actor } from '../audio/cast';
 import { DEFAULT_DEMO, findDemo, isTrackFileAvailable } from '../audio/demoTracks';
 import { AudioError, toAudioError } from '../audio/errors';
-import { openMicrophone, openTabAudio, playBuffer, playMediaUrl } from '../audio/sources';
+import {
+  isMicMuted,
+  openMicrophone,
+  openTabAudio,
+  playBuffer,
+  playMediaUrl,
+} from '../audio/sources';
 import { scoreFromMix, scoreFromStems } from '../audio/score/loadScore';
 import type { Score } from '../audio/score/score';
 import { summarise } from '../audio/score/songMap';
@@ -16,6 +22,9 @@ import { restoreLibrary } from '../library/library';
 import { setSongColours } from '../settings/bindings';
 import { isLiveSource, useAppStore } from './appStore';
 import { markReturning } from './returning';
+
+/** How long a new microphone gets before silence from it is treated as a problem. */
+const MIC_CHECK_MS = 1200;
 
 const AUDIO_EXTENSIONS = /\.(mp3|wav|ogg|oga|m4a|aac|flac|webm|opus)$/i;
 
@@ -154,6 +163,15 @@ export async function enableMic(): Promise<void> {
     store().setMic('live');
     forgetSong();
     store().setSource({ kind: 'mic' });
+    // A stream can take a moment to report it, and the visuals would just look broken.
+    window.setTimeout(() => {
+      if (store().source?.kind !== 'mic' || !isMicMuted()) return;
+      store().showNotice({
+        tone: 'info',
+        title: 'Your microphone is muted',
+        body: 'No sound is reaching the app. Unmute it in your sound settings, or with the mic key on your keyboard.',
+      });
+    }, MIC_CHECK_MS);
   } else if (store().mic === 'requesting') {
     store().setMic('idle');
   }
