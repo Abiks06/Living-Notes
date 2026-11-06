@@ -13,7 +13,7 @@ import { useLibrary } from '../library/library';
 import { onSongEnded, startPlayer } from '../library/player';
 import { restoreLibrary } from '../library/library';
 import { setSongColours } from '../settings/bindings';
-import { useAppStore } from './appStore';
+import { isLiveSource, useAppStore } from './appStore';
 
 const AUDIO_EXTENSIONS = /\.(mp3|wav|ogg|oga|m4a|aac|flac|webm|opus)$/i;
 
@@ -203,7 +203,7 @@ export function selectMicDevice(id: string | null): void {
 
 export function togglePlayback(): void {
   const transport = audioEngine.transport;
-  if (!transport) return;
+  if (!transport || isLiveSource(store().source)) return;
   if (transport.paused) transport.play();
   else transport.pause();
   store().setPaused(transport.paused);

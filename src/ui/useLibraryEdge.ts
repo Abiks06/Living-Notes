@@ -53,11 +53,14 @@ export function useLibraryEdge(): void {
       if (event.pointerType !== 'mouse') return;
       const { open, peek, setPeek } = useLibrary.getState();
       const atEdge = event.clientX <= EDGE_PX;
+      const over = event.target instanceof Element && event.target.closest('.library') !== null;
       if (open) {
         opening = stop(opening);
         closing = stop(closing);
+      } else if (peek === 'out' && over) {
+        leaving = stop(leaving);
+        setPeek('in');
       } else if (peek === 'in') {
-        const over = event.target instanceof Element && event.target.closest('.library') !== null;
         if (atEdge || over) closing = stop(closing);
         else closeSoon();
       } else if (atEdge && event.buttons === 0 && showIsClear()) {

@@ -4,7 +4,10 @@ import { DEFAULT_CUSTOM_COLORS, type PaletteColors, type PaletteKey } from './pa
 
 export const DEFAULT_WORD = 'RESONANCE';
 export const MAX_WORD_LENGTH = 16;
-/** A song's own name, which comes from the file rather than a share link, can run longer. */
+/**
+ * A song's own name, which comes from the file rather than a share link, can run longer. Past
+ * this, three lines of particles stop being readable, so a title is cut at a word.
+ */
 export const MAX_TITLE_LENGTH = 48;
 
 /**

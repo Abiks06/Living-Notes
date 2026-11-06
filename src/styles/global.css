@@ -367,31 +367,26 @@ button {
 }
 
 /* A peek slides over the show from the edge the mouse went to, and doesn't move anything. */
-.library[data-peek='in'] {
-  animation: library-peek-in 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
+.library[data-peek] {
+  animation: none;
+  transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .library[data-peek='out'] {
-  pointer-events: none;
-  animation: library-peek-out 160ms ease-in both;
+  transform: translateX(calc(-100% - 2 * var(--gutter)));
+  transition: transform 160ms ease-in;
 }
 
-@keyframes library-peek-in {
-  from {
-    transform: translateX(calc(-100% - 2 * var(--gutter)));
-  }
-}
-
-@keyframes library-peek-out {
-  to {
+/* A transition rather than keyframes, so it can reverse from wherever it's got to. */
+@starting-style {
+  .library[data-peek='in'] {
     transform: translateX(calc(-100% - 2 * var(--gutter)));
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .library[data-peek='in'],
-  .library[data-peek='out'] {
-    animation-name: none;
+  .library[data-peek] {
+    transition: none;
   }
 }
 

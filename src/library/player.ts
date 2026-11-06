@@ -76,6 +76,15 @@ function keepOnly(ids: readonly (string | null)[]): void {
   for (const id of scores.keys()) if (!ids.includes(id)) scores.delete(id);
 }
 
+function showSource(track: Track): void {
+  app().setSource({
+    kind: 'file',
+    name: track.fileName,
+    title: track.title,
+    artist: track.artist,
+  });
+}
+
 function describeSession(track: Track): void {
   if (!('mediaSession' in navigator)) return;
   navigator.mediaSession.metadata = new MediaMetadata({
@@ -116,12 +125,7 @@ async function start(track: Track, fadeS: number): Promise<boolean> {
   if (lead >= MIN_LEAD_IN_S) audioEngine.transport?.seek(lead);
   library().setNowPlaying(track);
   library().setComingUp(null);
-  app().setSource({
-    kind: 'file',
-    name: track.fileName,
-    title: track.title,
-    artist: track.artist,
-  });
+  showSource(track);
   describeSession(track);
   if (library().artColours) void paletteFor(track).then((colours) => setSongColours(colours));
   else setSongColours(null);
@@ -266,5 +270,11 @@ function connectMediaKeys(): void {
 /** Starts the player's background work. */
 export function startPlayer(): void {
   connectMediaKeys();
+  useLibrary.subscribe(({ nowPlaying: track }, { nowPlaying: before }) => {
+    // The same song under a corrected name: everything showing its name follows.
+    if (!track || !before || track.id !== before.id || track.title === before.title) return;
+    showSource(track);
+    describeSession(track);
+  });
   window.setInterval(watch, WATCH_MS);
 }
