@@ -19,6 +19,13 @@ const song = (id: string, title: string, artist: string, guessed = false): Track
 
 const untagged = (name: string) => new File(['not really audio'], name);
 
+/** Node's File has no folder path, which a browser's folder input always gives. */
+function inFolder(name: string): File {
+  const file = untagged(name);
+  Object.defineProperty(file, 'webkitRelativePath', { value: `Music/${name}` });
+  return file;
+}
+
 describe('names read backwards', () => {
   beforeEach(() => {
     const tagged = song('tagged', 'EARFQUAKE', 'Tyler, The Creator');
@@ -55,11 +62,14 @@ describe('names read backwards', () => {
 describe('dropping songs during a folder scan', () => {
   it('keeps them when the scan finishes', async () => {
     useLibrary.setState({ tracks: [], byId: new Map(), scan: null });
-    const scanning = addFolderFiles([untagged('Lana Del Rey - Cinnamon Girl.mp3')]);
+    // Enough files that the scan is still going when the drop lands.
+    const folder = Array.from({ length: 200 }, (_, i) => inFolder(`Artist - Song ${i}.mp3`));
+    const scanning = addFolderFiles(folder);
     const [dropped] = await addLooseFiles([untagged('The Weeknd - Shameless.mp3')]);
+    expect(useLibrary.getState().scan).not.toBeNull();
     await scanning;
     const titles = useLibrary.getState().tracks.map((track) => track.title);
-    expect(titles).toEqual(expect.arrayContaining(['Cinnamon Girl', 'Shameless']));
+    expect(titles).toEqual(expect.arrayContaining(['Song 0', 'Shameless']));
     expect(useLibrary.getState().byId.has(dropped?.id ?? '')).toBe(true);
   });
 });
