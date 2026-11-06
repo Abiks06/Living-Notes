@@ -1,5 +1,6 @@
 import { DataTexture, FloatType, NearestFilter, RGBAFormat } from 'three';
 import { DEFAULT_WORD } from '../../settings/schema';
+import { wordLines } from '../wordLayout';
 
 /**
  * Point-cloud targets that can't be written as a closed-form function of the particle
@@ -23,34 +24,60 @@ const FONT_PX = 150;
 const FONT_STACK = '"Arial Black", "Segoe UI", system-ui, sans-serif';
 const MAX_WORLD_WIDTH = 7.4;
 const MAX_WORLD_HEIGHT = 2.2;
+/** Several lines stack taller than one, but still have to clear the top and bottom of the view. */
+const MAX_BLOCK_HEIGHT = 3.3;
+/** Past this, at full size, one line would shrink too far for particles to spell it clearly. */
+const COMFORTABLE_WIDTH = CANVAS_WIDTH * 1.7;
+const LINE_SPACING = 1.12;
+
+interface Raster {
+  filled: number[];
+  scale: number;
+  height: number;
+}
 
 /** Draws the word and returns the filled pixels plus its fitted world scale. */
-function rasterizeWord(word: string): { filled: number[]; scale: number } | null {
+function rasterizeWord(word: string): Raster | null {
   const canvas = document.createElement('canvas');
   canvas.width = CANVAS_WIDTH;
   canvas.height = CANVAS_HEIGHT;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   if (!ctx) return null;
 
+  ctx.font = `900 ${FONT_PX}px ${FONT_STACK}`;
+  const lines = wordLines(word, (text) => ctx.measureText(text).width, COMFORTABLE_WIDTH);
+  // Long words and wide fallback fonts shrink to fit the canvas.
+  const natural = Math.max(...lines.map((line) => ctx.measureText(line).width));
+  const fit = Math.min(1, (CANVAS_WIDTH * 0.94) / Math.max(natural, 1));
+  const fontPx = Math.floor(FONT_PX * fit);
+  const lineHeight = fontPx * LINE_SPACING;
+  const blockHeight = fontPx + (lines.length - 1) * lineHeight;
+  const height = Math.max(CANVAS_HEIGHT, Math.ceil(blockHeight + 60));
+
+  // Resizing clears the canvas and everything set on it.
+  canvas.height = height;
   ctx.fillStyle = '#fff';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = `900 ${FONT_PX}px ${FONT_STACK}`;
-  // Long words and wide fallback fonts shrink to fit the canvas.
-  const natural = ctx.measureText(word).width;
-  const fit = Math.min(1, (CANVAS_WIDTH * 0.94) / Math.max(natural, 1));
-  ctx.font = `900 ${Math.floor(FONT_PX * fit)}px ${FONT_STACK}`;
-  ctx.fillText(word, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 6);
+  ctx.font = `900 ${fontPx}px ${FONT_STACK}`;
+  lines.forEach((line, i) => {
+    const offset = (i - (lines.length - 1) / 2) * lineHeight;
+    ctx.fillText(line, CANVAS_WIDTH / 2, height / 2 + 6 + offset);
+  });
 
-  const pixels = ctx.getImageData(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT).data;
+  const pixels = ctx.getImageData(0, 0, CANVAS_WIDTH, height).data;
   const filled: number[] = [];
-  for (let i = 0; i < CANVAS_WIDTH * CANVAS_HEIGHT; i++) {
+  for (let i = 0; i < CANVAS_WIDTH * height; i++) {
     if ((pixels[i * 4 + 3] ?? 0) > 128) filled.push(i);
   }
   const drawnWidth = Math.max(natural * fit, 1);
+  const maxHeight = lines.length > 1 ? MAX_BLOCK_HEIGHT : MAX_WORLD_HEIGHT;
   // Short words grow to fill the frame instead of sitting small in the middle.
-  const scale = Math.min(MAX_WORLD_WIDTH / drawnWidth, MAX_WORLD_HEIGHT / (FONT_PX * fit));
-  return { filled, scale };
+  const scale = Math.min(
+    MAX_WORLD_WIDTH / drawnWidth,
+    maxHeight / (lines.length > 1 ? blockHeight : FONT_PX * fit),
+  );
+  return { filled, scale, height };
 }
 
 /** Writes one target per particle, sampled from the word's filled pixels. */
@@ -64,14 +91,14 @@ function fillRange(
   data: Float32Array,
   from: number,
   to: number,
-  { filled, scale }: NonNullable<ReturnType<typeof rasterizeWord>>,
+  { filled, scale, height }: Raster,
 ): void {
   for (let i = from; i < to; i += 4) {
     const pixel = filled[Math.floor(Math.random() * filled.length)] ?? 0;
     const x = (pixel % CANVAS_WIDTH) + Math.random();
     const y = Math.floor(pixel / CANVAS_WIDTH) + Math.random();
     data[i] = (x - CANVAS_WIDTH / 2) * scale;
-    data[i + 1] = -(y - CANVAS_HEIGHT / 2) * scale;
+    data[i + 1] = -(y - height / 2) * scale;
     data[i + 2] = (Math.random() - 0.5) * 0.35;
     data[i + 3] = 1;
   }

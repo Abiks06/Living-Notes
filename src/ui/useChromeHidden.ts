@@ -16,7 +16,7 @@ const OPEN_MENU = '.menu';
 export function useChromeHidden(): boolean {
   const phase = useAppStore((state) => state.phase);
   const studioOpen = useAppStore((state) => state.studioOpen);
-  const libraryOpen = useLibrary((state) => state.open);
+  const libraryOpen = useLibrary((state) => state.open || state.peek !== 'off');
   const notice = useAppStore((state) => state.notice);
   const mic = useAppStore((state) => state.mic);
   const manual = useAppStore((state) => state.uiHiddenManual);

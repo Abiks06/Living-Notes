@@ -7,7 +7,7 @@ import { useLibrary } from '../library/library';
 import { playTracks, skipNext, skipPrevious, toggleRepeat, toggleShuffle } from '../library/player';
 import { ensureStarted, setVolume, toggleMute, togglePlayback } from '../state/actions';
 import { useSettings } from '../settings/settingsStore';
-import { type ActiveSource, useAppStore } from '../state/appStore';
+import { type ActiveSource, isLiveSource, useAppStore } from '../state/appStore';
 import {
   LibraryIcon,
   MutedIcon,
@@ -124,7 +124,8 @@ export function PlayerBar() {
 
   if (phase === 'intro') return null;
 
-  const hasTimeline = source !== null && source.kind !== 'mic' && source.kind !== 'tab';
+  const live = isLiveSource(source);
+  const hasTimeline = source !== null && !live;
   const { title, detail } = describe(source);
 
   const onPlay = () => {
@@ -182,7 +183,7 @@ export function PlayerBar() {
           className="control"
           aria-label="Previous"
           title="Previous (P)"
-          disabled={!playing}
+          disabled={!playing || live}
           onClick={skipPrevious}
         >
           <SkipIcon style={{ transform: 'scaleX(-1)' }} />
@@ -190,8 +191,9 @@ export function PlayerBar() {
         <button
           type="button"
           className="control control--play"
-          aria-label={paused || !hasTimeline ? 'Play' : 'Pause'}
-          title="Play or pause (Space)"
+          aria-label={live ? 'Listening live' : paused || !hasTimeline ? 'Play' : 'Pause'}
+          title={live ? 'Listening live. Pick a song to play it instead.' : 'Play or pause (Space)'}
+          disabled={live}
           onClick={onPlay}
         >
           {paused || !hasTimeline ? <PlayIcon /> : <PauseIcon />}
@@ -201,7 +203,7 @@ export function PlayerBar() {
           className="control"
           aria-label="Next"
           title="Next (N)"
-          disabled={!playing}
+          disabled={!playing || live}
           onClick={skipNext}
         >
           <SkipIcon />

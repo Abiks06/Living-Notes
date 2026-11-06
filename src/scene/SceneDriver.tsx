@@ -5,6 +5,7 @@ import { useReducedMotion } from '../lib/useMediaQuery';
 import { useSettings } from '../settings/settingsStore';
 import { useAppStore } from '../state/appStore';
 import { AutoDirector, moodOf, nextShow } from './AutoDirector';
+import { flashWordFor, readingTime } from './flashWord';
 import { partMemory } from './partLook';
 import { sceneDirector } from './SceneDirector';
 import { MORPH_SHAPES, sceneByKey } from './scenes';
@@ -55,12 +56,20 @@ export function SceneDriver() {
     partMemory.update(dt, audioFeatures);
 
     const settings = useSettings.getState();
-    // Whatever the mode, a song's first big moment smashes its own title.
+    // Whatever the mode, a song's first big moment smashes its own title. A song that builds to
+    // a drop forms it in the climb; one that never does spells it when it first opens up.
     const titled = source?.kind === 'file' && Boolean(source.title);
-    if (titled && !settings.autoDirector && !reducedMotion && !wordSpent.current) {
-      if (audioFeatures.scored && audioFeatures.tension >= TITLE_FROM) {
+    if (titled && !reducedMotion && !wordSpent.current && audioFeatures.scored) {
+      const climbing = audioFeatures.tension >= TITLE_FROM;
+      if (climbing || audioFeatures.titleDue) {
         wordSpent.current = true;
-        sceneDirector.flashWord(sceneByKey(settings.scene), audioFeatures.snareCount, true);
+        auto.wordShown();
+        sceneDirector.flashWord(
+          sceneByKey(settings.scene),
+          audioFeatures.snareCount,
+          climbing,
+          readingTime(flashWordFor(source, settings.word)),
+        );
       }
     }
     const directing = settings.autoDirector && audioFeatures.live;

@@ -1,5 +1,6 @@
 import { type AudioFeatures, LINE_AHEAD_S, LINE_PAST_S, LINE_ROWS } from '../features';
 import { type Hit, SCORE_RATE, type Score } from './score';
+import { titleMoment } from './titleMoment';
 import { CHROMA_RATE } from './voices';
 
 /**
@@ -55,6 +56,8 @@ export class ScorePlayer {
   private onsets = 0;
   private notes = 0;
   private chords = 0;
+  private titled: Score | null = null;
+  private titleAt = 0;
 
   /** @param heard Song position reaching the listener now, in seconds. */
   apply(score: Score, heard: number, out: AudioFeatures): void {
@@ -72,6 +75,12 @@ export class ScorePlayer {
     this.writeLevels(score, ahead, out);
     this.writeBeat(score, ahead, out);
     this.writeForm(score, t, out);
+    // Worked out here rather than in the score, so songs already analysed get it too.
+    if (this.titled !== score) {
+      this.titled = score;
+      this.titleAt = titleMoment(score);
+    }
+    out.titleDue = t >= this.titleAt;
     out.scored = true;
   }
 

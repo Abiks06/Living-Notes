@@ -72,6 +72,7 @@ export class IdlePreview {
     out.pitchConfidence = 0.6;
     out.vocal = 0;
     out.scored = false;
+    out.titleDue = false;
     out.presence = 1;
     out.bpm = BPM;
     out.beatPhase = phase;

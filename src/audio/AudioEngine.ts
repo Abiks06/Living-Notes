@@ -232,6 +232,7 @@ export class AudioEngine {
     if (this.current && analyser && pitchAnalyser && extractor && this.ctx?.state === 'running') {
       extractor.update(analyser, pitchAnalyser, dt, audioFeatures);
       audioFeatures.scored = false;
+      audioFeatures.titleDue = false;
       audioFeatures.presence = 1;
       audioFeatures.dropPower = 1;
       audioFeatures.tension = 0;

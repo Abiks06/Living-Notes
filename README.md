@@ -90,18 +90,18 @@ No sign-up, no install. Click once and the scene is already moving.
 
 ### Keyboard
 
-| Key     | Action                       | Key                         | Action                |
-| ------- | ---------------------------- | --------------------------- | --------------------- |
-| `1`–`5` | Switch scene                 | `Space`                     | Play / pause          |
-| `C`     | Studio panel                 | `M`                         | Mute                  |
-| `F`     | Stats overlay                | `H`                         | Hide / show interface |
-| `V`     | Auto                         | `N` / `P`                   | Next / previous track |
-| `Esc`   | Close panel / show interface | Hold still, or `Shift`-drag | Gravity well          |
-| `L`     | Lounge mode                  | `B`                         | Compare with original |
-| `[` `]` | Previous or next section     | `Q`                         | Music library         |
-| `S`     | Shuffle                      | `R`                         | Repeat                |
-| `T`     | Next appearance              | `←` `→`                     | Back or forward 5 s   |
-|         |                              | `↑` `↓`                     | Volume                |
+| Key     | Action                       | Key                         | Action                                             |
+| ------- | ---------------------------- | --------------------------- | -------------------------------------------------- |
+| `1`–`5` | Switch scene                 | `Space`                     | Play / pause                                       |
+| `C`     | Studio panel                 | `M`                         | Mute                                               |
+| `F`     | Stats overlay                | `H`                         | Hide / show interface                              |
+| `V`     | Auto                         | `N` / `P`                   | Next / previous track                              |
+| `Esc`   | Close panel / show interface | Hold still, or `Shift`-drag | Gravity well                                       |
+| `L`     | Lounge mode                  | `B`                         | Compare with original                              |
+| `[` `]` | Previous or next section     | `Q`                         | Music library (or move the mouse to the left edge) |
+| `S`     | Shuffle                      | `R`                         | Repeat                                             |
+| `T`     | Next appearance              | `←` `→`                     | Back or forward 5 s                                |
+|         |                              | `↑` `↓`                     | Volume                                             |
 
 ---
 

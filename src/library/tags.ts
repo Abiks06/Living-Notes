@@ -351,6 +351,34 @@ export function cleanTitle(title: string): string {
   return title.replace(NOISE, '').replace(REMASTER, '').replace(/\s+/g, ' ').trim() || title;
 }
 
+interface NamedTrack {
+  readonly title: string;
+  readonly artist: string;
+  /** True when the name came from the file, so "Artist - Song" was only an assumption. */
+  readonly guessed: boolean;
+}
+
+/**
+ * Finds songs named the other way round, "Song - Artist", by what the rest of the library knows:
+ * an artist from the tags, or the same name turning up as the "song" on several files.
+ */
+export function namedBackwards(track: NamedTrack, library: readonly NamedTrack[]): boolean {
+  if (!track.guessed) return false;
+  const name = (text: string) => text.toLowerCase();
+  const title = name(track.title);
+  const artist = name(track.artist);
+  const isKnownArtist = (text: string) =>
+    library.some((other) => {
+      const known = name(other.artist);
+      return !other.guessed && (text === known || text.startsWith(`${known} `));
+    });
+  if (isKnownArtist(artist)) return false;
+  if (isKnownArtist(title)) return true;
+  const count = (read: (other: NamedTrack) => string, text: string) =>
+    library.filter((other) => other.guessed && name(read(other)) === text).length;
+  return count((other) => other.title, title) >= 2 && count((other) => other.artist, artist) < 2;
+}
+
 /** Best guess from a file name, for files with no tags: "03. Artist - Song (FLAC).flac". */
 export function nameParts(name: string): { title: string; artist?: string } {
   const bare = cleanTitle(

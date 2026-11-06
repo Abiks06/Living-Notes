@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { flashWordFor, titleFromFile } from './flashWord';
+import { flashWordFor, readingTime, titleFromFile } from './flashWord';
 
 describe('titleFromFile', () => {
   it('finds the song inside a typical file name', () => {
@@ -9,16 +9,31 @@ describe('titleFromFile', () => {
     expect(titleFromFile('late_night_drive.wav')).toBe('late night drive');
   });
 
-  it('cuts a long title at a word, never through one', () => {
-    expect(titleFromFile('The Long and Winding Road Home.mp3')).toBe('The Long and');
+  it('keeps a long title whole', () => {
+    expect(titleFromFile('The Long and Winding Road Home.mp3')).toBe(
+      'The Long and Winding Road Home',
+    );
+  });
+
+  it('cuts only a very long title, at a word and never through one', () => {
+    const name = 'Now That We Have Found Love What Are We Going To Do With It Tonight.mp3';
+    expect(titleFromFile(name)).toBe('Now That We Have Found Love What Are We Going To');
   });
 
   it('copes with a single unbroken word', () => {
-    expect(titleFromFile('Supercalifragilisticexpialidocious.mp3')).toHaveLength(16);
+    expect(titleFromFile(`${'x'.repeat(60)}.mp3`)).toHaveLength(48);
   });
 
   it('gives nothing for a name with no title in it', () => {
     expect(titleFromFile('(1).mp3')).toBe('');
+  });
+});
+
+describe('readingTime', () => {
+  it('gives a long name longer on screen, up to a limit', () => {
+    expect(readingTime('Shameless')).toBe(1.6);
+    expect(readingTime('Bitch, Don’t Kill My Vibe (Remix)')).toBeGreaterThan(2.5);
+    expect(readingTime('x'.repeat(48))).toBe(3.2);
   });
 });
 
