@@ -150,8 +150,6 @@ const MAX_VACUUM_S = 3;
 const GAP_MEMORY = 0.9;
 const INHALE_ATTACK_S = 0.22;
 const INHALE_RELEASE_S = 0.08;
-const IMPACT_DECAY_S = 0.55;
-const IMPACT_FROM = 0.35;
 
 /**
  * The breath before a drop. Most drops are set up by taking the low end away for a beat or
@@ -162,8 +160,6 @@ const IMPACT_FROM = 0.35;
 export class InhaleTracker {
   /** 0–1: how far into the held breath the music is. */
   inhale = 0;
-  /** 0–1: the kick that ended a held breath, decaying. */
-  impact = 0;
 
   private sinceKick = 0;
   private longestGap = 0;
@@ -171,10 +167,8 @@ export class InhaleTracker {
 
   update(dt: number, kickHit: boolean, gate: number): void {
     this.sinceKick += dt;
-    this.impact = Math.max(0, this.impact - dt / IMPACT_DECAY_S);
 
     if (kickHit) {
-      if (this.inhale > IMPACT_FROM) this.impact = 1;
       // Even a gap that ended a breath counts: if long gaps are normal here, it must learn so.
       this.longestGap = Math.max(this.sinceKick, this.longestGap * GAP_MEMORY);
       this.sinceKick = 0;
@@ -194,7 +188,6 @@ export class InhaleTracker {
 
   reset(): void {
     this.inhale = 0;
-    this.impact = 0;
     this.sinceKick = 0;
     this.longestGap = 0;
     this.hits = 0;

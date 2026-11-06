@@ -3,6 +3,7 @@ import { BeatDetector } from './beatDetector';
 import { DynamicsTracker } from './dynamics';
 import { clamp01, follow } from './envelope';
 import { type AudioFeatures, BIN_COUNT, FFT_SIZE, PITCH_FFT_SIZE } from './features';
+import { LiveForm } from './liveForm';
 import { MoodTracker } from './mood';
 import { BarTracker, InhaleTracker } from './phrasing';
 import { TEMPO_LOCKED, TempoTracker } from './tempo';
@@ -60,6 +61,9 @@ export class FeatureExtractor {
   private readonly tempo = new TempoTracker();
   private readonly bars = new BarTracker();
   private readonly breath = new InhaleTracker();
+  private readonly form = new LiveForm();
+  /** Each band before auto-gain, on the analyser's decibel scale. */
+  readonly levels = new Float32Array(BAND_COUNT);
   private readonly mood = new MoodTracker();
   private melodyNote = MELODY_LOW + MELODY_RANGE / 2;
   private notes = 0;
@@ -119,6 +123,7 @@ export class FeatureExtractor {
 
     for (let band = 0; band < BAND_COUNT; band++) {
       const raw = (sums[band] ?? 0) / (Math.max(1, binCounts[band] ?? 1) * 255);
+      this.levels[band] = raw;
 
       let peak = this.peaks[band] ?? MIN_RANGE;
       let floor = this.floors[band] ?? 0;
@@ -203,7 +208,12 @@ export class FeatureExtractor {
     out.feltBeat = this.bars.feltBeat;
     this.breath.update(dt, kickHit, gate);
     out.inhale = this.breath.inhale;
-    out.impact = this.breath.impact;
+    this.form.update(this.levels, kickHit, gate, dt);
+    out.impact = this.form.impact;
+    out.dropPower = this.form.dropPower;
+    out.presence = this.form.presence;
+    out.tension = this.form.tension;
+    out.world = this.form.world;
     this.mood.update(dt, {
       gate,
       intensity,
@@ -252,6 +262,7 @@ export class FeatureExtractor {
     this.tempo.reset();
     this.bars.reset();
     this.breath.reset();
+    this.form.reset();
     this.mood.reset();
     this.peaks.fill(MIN_RANGE);
     this.floors.fill(0);

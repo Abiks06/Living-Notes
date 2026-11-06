@@ -233,11 +233,7 @@ export class AudioEngine {
       extractor.update(analyser, pitchAnalyser, dt, audioFeatures);
       audioFeatures.scored = false;
       audioFeatures.titleDue = false;
-      audioFeatures.presence = 1;
-      audioFeatures.dropPower = 1;
-      audioFeatures.tension = 0;
       audioFeatures.hang = 0;
-      audioFeatures.world = 0;
       audioFeatures.sectionPart = -1;
       this.performScore();
       this.performHandoff(dt);
