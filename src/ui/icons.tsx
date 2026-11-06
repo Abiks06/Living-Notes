@@ -163,6 +163,12 @@ export const LibraryIcon = (props: IconProps) => (
   </Icon>
 );
 
+export const RefreshIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M20 11a8 8 0 0 0-14.3-4.4L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.4L20 16M20 20v-4h-4" />
+  </Icon>
+);
+
 export const FolderIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />

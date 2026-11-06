@@ -148,6 +148,30 @@ export function removeFromQueue(queue: PlayQueue, position: number): PlayQueue {
   return { ...queue, upNext: queue.upNext.filter((_, i) => i !== position) };
 }
 
+/**
+ * Keeps the queue true to a folder that changed. The song playing carries on even if its file
+ * has gone, and new songs only join a queue that was playing the whole library.
+ */
+export function syncQueue(
+  queue: PlayQueue,
+  added: readonly string[],
+  removed: readonly string[],
+): PlayQueue {
+  const gone = new Set(removed);
+  // The song playing can be deleted and put back while it plays, and is already in the queue.
+  const fresh = added.filter((id) => !queue.order.includes(id));
+  const kept = (ids: readonly string[]) => ids.filter((id) => !gone.has(id));
+  const order = [...queue.order.filter((id) => id === queue.current || !gone.has(id)), ...fresh];
+  return {
+    ...queue,
+    order,
+    base: [...kept(queue.base), ...fresh],
+    upNext: kept(queue.upNext),
+    history: kept(queue.history),
+    index: queue.current === null ? queue.index : order.indexOf(queue.current),
+  };
+}
+
 /** Shuffles what's left around the song playing now, or puts the original order back. */
 export function setShuffle(
   queue: PlayQueue,

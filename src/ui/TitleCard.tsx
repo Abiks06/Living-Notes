@@ -16,6 +16,9 @@ function detail(track: Track): string {
  * The song's name, set large over the picture as it starts, like a film's title card. It belongs
  * to the show rather than the controls, so it stays when they fade away.
  */
+/** Past this a title would fill the screen at full size, so it steps down. */
+const LONG_TITLE = 34;
+
 export function TitleCard() {
   const track = useLibrary((state) => state.nowPlaying);
   const comingUp = useLibrary((state) => state.comingUp);
@@ -47,7 +50,13 @@ export function TitleCard() {
   return (
     <>
       {track && phase !== 'gone' && (
-        <div className="title-card" data-phase={phase} key={track.id} aria-hidden="true">
+        <div
+          className="title-card"
+          data-phase={phase}
+          data-long={track.title.length > LONG_TITLE}
+          key={track.id}
+          aria-hidden="true"
+        >
           {art && <img className="title-card__art" src={art} alt="" />}
           <div className="title-card__words">
             <p className="title-card__title">{track.title}</p>

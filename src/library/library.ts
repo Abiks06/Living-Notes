@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { EMPTY_QUEUE, type PlayQueue } from './queue';
+import { EMPTY_QUEUE, type PlayQueue, syncQueue } from './queue';
 import { readCachedTags, readSetting, writeCachedTags, writeSetting } from './storage';
 import { cleanTitle, nameParts, readTags, type Tags } from './tags';
 
@@ -34,6 +34,8 @@ interface LibraryState {
   /** A folder from last time, waiting for one click to be allowed back in. */
   saved: string | null;
   scan: { done: number; total: number } | null;
+  /** Whether the open folder can be looked at again without asking. */
+  watching: boolean;
   queue: PlayQueue;
   nowPlaying: Track | null;
   /** Shown near the end of a song. */
@@ -55,6 +57,7 @@ export const useLibrary = create<LibraryState>()((set) => ({
   folder: null,
   saved: null,
   scan: null,
+  watching: false,
   queue: EMPTY_QUEUE,
   nowPlaying: null,
   comingUp: null,
@@ -187,10 +190,74 @@ async function walk(folder: FolderHandle, path: string, out: Found[]): Promise<v
   }
 }
 
+let openFolder: FolderHandle | null = null;
+let refreshing = false;
+
 async function scanFolder(folder: FolderHandle): Promise<void> {
   const found: Found[] = [];
   await walk(folder, folder.name, found);
   await addAll(found, folder.name);
+  openFolder = folder;
+  useLibrary.setState({ watching: true });
+}
+
+export interface FolderChanges {
+  added: number;
+  removed: number;
+}
+
+async function describeAll(found: readonly Found[]): Promise<Track[]> {
+  const tracks: Track[] = [];
+  let next = 0;
+  const worker = async () => {
+    while (next < found.length) {
+      const item = found[next++];
+      const track = item ? await describe(item) : null;
+      if (track) tracks.push(track);
+    }
+  };
+  await Promise.all(Array.from({ length: SCAN_WIDTH }, worker));
+  return tracks;
+}
+
+/** Brings the library in line with the folder. What's playing is left alone. */
+export async function refreshLibrary(): Promise<FolderChanges> {
+  const none = { added: 0, removed: 0 };
+  const folder = openFolder;
+  if (!folder || refreshing || library().scan) return none;
+  refreshing = true;
+  try {
+    if ((await folder.queryPermission({ mode: 'read' })) !== 'granted') return none;
+    const found: Found[] = [];
+    // If the folder can't be read, say a drive was unplugged, nothing is treated as deleted.
+    await walk(folder, folder.name, found);
+    const paths = new Set(found.map((item) => item.path));
+    const inFolder = (track: Track) => track.id.startsWith(`${folder.name}/`);
+    const before = library().tracks;
+    const removed = before.filter((track) => inFolder(track) && !paths.has(track.id));
+    const fresh = found.filter((item) => !library().byId.has(item.path));
+    if (removed.length === 0 && fresh.length === 0) return none;
+
+    const added = await describeAll(fresh);
+    if (openFolder !== folder) return none;
+    const gone = new Set(removed.map((track) => track.id));
+    const { queue } = library();
+    const wholeLibrary =
+      queue.base.length > 0 && queue.base.length >= before.filter(inFolder).length;
+    publish([...library().tracks.filter((track) => !gone.has(track.id)), ...added]);
+    useLibrary.setState({
+      queue: syncQueue(
+        queue,
+        wholeLibrary ? added.map((track) => track.id) : [],
+        removed.map((track) => track.id),
+      ),
+    });
+    return { added: added.length, removed: removed.length };
+  } catch {
+    return none;
+  } finally {
+    refreshing = false;
+  }
 }
 
 /** True where a folder can be opened once and remembered. Firefox and Safari can't do this. */
@@ -204,6 +271,8 @@ export async function pickFolder(): Promise<boolean> {
   try {
     const folder = await picker({ id: 'music', mode: 'read', startIn: 'music' });
     void writeSetting('folder', folder);
+    // Asks the browser not to clear what's stored here, including this folder, when space is low.
+    void navigator.storage?.persist?.();
     await scanFolder(folder);
     return true;
   } catch (error) {
@@ -216,6 +285,8 @@ export async function pickFolder(): Promise<boolean> {
 export async function addFolderFiles(files: readonly File[]): Promise<void> {
   const audio = files.filter((file) => AUDIO_FILE.test(file.name));
   const folder = audio[0]?.webkitRelativePath.split('/')[0] ?? 'Music';
+  openFolder = null;
+  useLibrary.setState({ watching: false });
   await addAll(
     audio.map((file) => ({
       path: file.webkitRelativePath || file.name,
