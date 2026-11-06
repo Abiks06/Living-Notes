@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanTitle, nameParts, readTags } from './tags';
+import { cleanTitle, nameParts, namedBackwards, readTags } from './tags';
 
 const text = (value: string) => Array.from(new TextEncoder().encode(value));
 const le32 = (n: number) => [n & 255, (n >> 8) & 255, (n >> 16) & 255, (n >> 24) & 255];
@@ -173,5 +173,37 @@ describe('Names', () => {
       title: 'The Trooper',
       artist: 'Iron Maiden',
     });
+  });
+});
+
+describe('namedBackwards', () => {
+  const tagged = (artist: string) => ({ title: 'Anything', artist, guessed: false });
+  const file = (artist: string, title: string) => ({ title, artist, guessed: true });
+
+  it('spots an artist the tags already know, on the song side', () => {
+    const track = file('SORRY NOT SORRY', 'Tyler, The Creator');
+    expect(namedBackwards(track, [track, tagged('Tyler, The Creator')])).toBe(true);
+  });
+
+  it('allows for a guest after the artist', () => {
+    const track = file('She', 'Tyler, The Creator Frank Ocean');
+    expect(namedBackwards(track, [track, tagged('Tyler, The Creator')])).toBe(true);
+  });
+
+  it('spots the same name on the song side of several files', () => {
+    const one = file('Song One', 'Royel Otis');
+    const two = file('Song Two', 'Royel Otis');
+    expect(namedBackwards(one, [one, two])).toBe(true);
+  });
+
+  it('leaves the usual order alone', () => {
+    const track = file('The Weeknd', 'Shameless');
+    const other = file('The Weeknd', 'As You Are');
+    expect(namedBackwards(track, [track, other, tagged('The Weeknd')])).toBe(false);
+  });
+
+  it('never touches tagged songs', () => {
+    const track = tagged('Kendrick Lamar');
+    expect(namedBackwards(track, [track, tagged('Anything')])).toBe(false);
   });
 });

@@ -130,6 +130,8 @@ export interface AudioFeatures {
   live: boolean;
   /** True when a score, not live analysis, is driving these features. */
   scored: boolean;
+  /** The song has reached the point where it should spell its name. */
+  titleDue: boolean;
   /** The Living Visualizer switch: false shows the original reactive version, for comparing. */
   living: boolean;
   /** 0–1 how big this moment is against the whole song. 1 when the song isn't known. */
@@ -196,6 +198,7 @@ export function createAudioFeatures(): AudioFeatures {
     beatIndex: 0,
     live: false,
     scored: false,
+    titleDue: false,
     living: true,
     presence: 1,
     melody: 0.5,

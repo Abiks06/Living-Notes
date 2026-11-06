@@ -27,7 +27,8 @@ const MAX_SHAPE_HOLD_S = 10;
 /** The word on a drop: quick in, long enough to read, then out with the next snare. */
 const WORD_IN_S = 0.35;
 const WORD_MIN_S = 1.6;
-const WORD_MAX_S = 4;
+/** The longest a word waits for a snare to carry it away, once it's been read. */
+const WORD_EXTRA_S = 2.4;
 const WORD_OUT_S = 0.8;
 /** A word waiting for a drop gives up after this long, in case the song stops first. */
 const WORD_WAIT_S = 14;
@@ -85,6 +86,7 @@ export class SceneDirector {
 
   /** True while a word holds the screen after a drop. */
   wordFlash = false;
+  private wordRead = WORD_MIN_S;
   /** 1 at the moment that word breaks apart, decaying. */
   shatter = 0;
 
@@ -169,9 +171,15 @@ export class SceneDirector {
    * Takes over the screen with the word, until the next snare after it's been read. With
    * `untilDrop` it's formed in the climb instead, and the drop itself smashes it.
    */
-  flashWord(returnTo: SceneDefinition, snareCount: number, untilDrop = false): void {
+  flashWord(
+    returnTo: SceneDefinition,
+    snareCount: number,
+    untilDrop = false,
+    readFor = WORD_MIN_S,
+  ): void {
     if (this.wordFlash) return;
     this.wordFlash = true;
+    this.wordRead = readFor;
     this.wordAwaitsDrop = untilDrop;
     this.wordHeld = 0;
     this.wordSnares = snareCount;
@@ -187,10 +195,10 @@ export class SceneDirector {
     this.wordHeld += dt;
     const snare = audio.snareCount !== this.wordSnares;
     this.wordSnares = audio.snareCount;
-    const read = this.wordHeld >= WORD_MIN_S && snare;
+    const read = this.wordHeld >= this.wordRead && snare;
     if (this.wordAwaitsDrop) {
       if (audio.impact <= 0 && this.wordHeld < WORD_WAIT_S) return;
-    } else if (!read && this.wordHeld < WORD_MAX_S) {
+    } else if (!read && this.wordHeld < this.wordRead + WORD_EXTRA_S) {
       return;
     }
 

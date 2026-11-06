@@ -366,6 +366,35 @@ button {
   animation: menu-in 180ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
+/* A peek slides over the show from the edge the mouse went to, and doesn't move anything. */
+.library[data-peek='in'] {
+  animation: library-peek-in 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+.library[data-peek='out'] {
+  pointer-events: none;
+  animation: library-peek-out 160ms ease-in both;
+}
+
+@keyframes library-peek-in {
+  from {
+    transform: translateX(calc(-100% - 2 * var(--gutter)));
+  }
+}
+
+@keyframes library-peek-out {
+  to {
+    transform: translateX(calc(-100% - 2 * var(--gutter)));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .library[data-peek='in'],
+  .library[data-peek='out'] {
+    animation-name: none;
+  }
+}
+
 /* The show makes room for the library on any screen wide enough for both. */
 @media (min-width: 900px) {
   .app[data-library='open'] .title-card {

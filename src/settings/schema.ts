@@ -4,14 +4,16 @@ import { DEFAULT_CUSTOM_COLORS, type PaletteColors, type PaletteKey } from './pa
 
 export const DEFAULT_WORD = 'RESONANCE';
 export const MAX_WORD_LENGTH = 16;
+/** A song's own name, which comes from the file rather than a share link, can run longer. */
+export const MAX_TITLE_LENGTH = 48;
 
 /**
  * The wordmark text. It arrives from share links, so it's untrusted: control characters
  * go, whitespace collapses and the length is capped. It's only ever drawn to a canvas.
  */
-export function sanitizeWord(raw: string): string {
+export function sanitizeWord(raw: string, limit = MAX_WORD_LENGTH): string {
   const printable = raw.replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, ' ').replace(/\s+/g, ' ');
-  return Array.from(printable.trimStart()).slice(0, MAX_WORD_LENGTH).join('');
+  return Array.from(printable.trimStart()).slice(0, limit).join('');
 }
 
 export const PARTICLE_TIERS = ['auto', '65k', '262k', '590k'] as const;

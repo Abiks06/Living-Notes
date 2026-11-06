@@ -348,6 +348,7 @@ export function LibraryPanel() {
   const folder = useLibrary((state) => state.folder);
   const scan = useLibrary((state) => state.scan);
   const setOpen = useLibrary((state) => state.setOpen);
+  const peek = useLibrary((state) => state.peek);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'songs' | 'queue' | 'more'>('songs');
   const term = useDeferredValue(search.trim().toLowerCase());
@@ -369,7 +370,12 @@ export function LibraryPanel() {
   };
 
   return (
-    <aside id="library" className="library chrome" aria-label="Music library">
+    <aside
+      id="library"
+      className="library chrome"
+      data-peek={peek === 'off' ? undefined : peek}
+      aria-label="Music library"
+    >
       <header className="library__header">
         <h2>{folder ?? 'Your music'}</h2>
         {folder && <RefreshButton />}

@@ -14,6 +14,7 @@ import { StartOverlay } from './ui/StartOverlay';
 import { TitleCard } from './ui/TitleCard';
 import { TopActions } from './ui/TopActions';
 import { useChromeHidden } from './ui/useChromeHidden';
+import { useLibraryEdge } from './ui/useLibraryEdge';
 import { useLibraryWatch } from './ui/useLibraryWatch';
 import { useShortcuts } from './ui/useShortcuts';
 
@@ -44,10 +45,12 @@ export function App() {
   const chromeHidden = useChromeHidden();
   const studioOpen = useAppStore((state) => state.studioOpen);
   const libraryOpen = useLibrary((state) => state.open);
+  const libraryPeek = useLibrary((state) => state.peek);
   const phase = useAppStore((state) => state.phase);
 
   useShortcuts();
   useLibraryWatch();
+  useLibraryEdge();
 
   return (
     <main
@@ -76,7 +79,7 @@ export function App() {
           <StudioPanel />
         </Suspense>
       )}
-      {libraryOpen && (
+      {(libraryOpen || libraryPeek !== 'off') && (
         <Suspense fallback={null}>
           <LibraryPanel />
         </Suspense>

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { EMPTY_QUEUE, type PlayQueue, syncQueue } from './queue';
 import { readCachedTags, readSetting, writeCachedTags, writeSetting } from './storage';
-import { cleanTitle, nameParts, readTags, type Tags } from './tags';
+import { cleanTitle, nameParts, namedBackwards, readTags, type Tags } from './tags';
 
 export const AUDIO_FILE = /\.(mp3|wav|ogg|oga|m4a|aac|flac|webm|opus)$/i;
 
@@ -11,6 +11,8 @@ export interface Track {
   /** Tidied for display, from the tags or else the file name. */
   readonly title: string;
   readonly artist: string;
+  /** The name came from the file, so which part is the song was an assumption. */
+  readonly guessed: boolean;
   readonly album: string;
   readonly year: string;
   readonly genre: string;
@@ -26,6 +28,8 @@ interface Found {
   path: string;
   open(): Promise<File>;
 }
+
+export type LibraryPeek = 'off' | 'in' | 'out';
 
 interface LibraryState {
   tracks: readonly Track[];
@@ -43,7 +47,10 @@ interface LibraryState {
   crossfade: number;
   artColours: boolean;
   open: boolean;
+  /** Slid in by the mouse at the edge of the window, rather than opened on purpose. */
+  peek: LibraryPeek;
   setOpen: (open: boolean) => void;
+  setPeek: (peek: LibraryPeek) => void;
   setQueue: (queue: PlayQueue) => void;
   setNowPlaying: (track: Track | null) => void;
   setComingUp: (track: Track | null) => void;
@@ -64,7 +71,10 @@ export const useLibrary = create<LibraryState>()((set) => ({
   crossfade: 3,
   artColours: true,
   open: false,
-  setOpen: (open) => set({ open }),
+  peek: 'off',
+  // Opening it on purpose takes over from a peek, so it stays until it's closed.
+  setOpen: (open) => set({ open, peek: 'off' }),
+  setPeek: (peek) => set({ peek }),
   setQueue: (queue) => set({ queue }),
   setNowPlaying: (nowPlaying) => set({ nowPlaying }),
   setComingUp: (comingUp) => set({ comingUp }),
@@ -94,6 +104,7 @@ function toTrack(found: Found, file: File, tags: Tags): Track {
     fileName: file.name,
     title: cleanTitle(tags.title ?? guess.title),
     artist: tags.artist ?? tags.albumArtist ?? guess.artist ?? 'Unknown artist',
+    guessed: !tags.title && !tags.artist && !tags.albumArtist && guess.artist !== undefined,
     album: tags.album ?? '',
     year: tags.year ?? '',
     genre: tags.genre ?? '',
@@ -137,6 +148,12 @@ async function describe(found: Found): Promise<Track | null> {
   }
 }
 
+/** A file name can only be judged against the rest of the folder, so this waits for all of it. */
+function straightened(track: Track, all: readonly Track[]): Track {
+  if (!namedBackwards(track, all)) return track;
+  return { ...track, title: track.artist, artist: track.title, guessed: false };
+}
+
 /** Reads every file's tags, a few at a time, showing songs as they're found. */
 async function addAll(found: readonly Found[], folder: string): Promise<Track[]> {
   const tracks: Track[] = [];
@@ -158,7 +175,7 @@ async function addAll(found: readonly Found[], folder: string): Promise<Track[]>
     }
   };
   await Promise.all(Array.from({ length: SCAN_WIDTH }, worker));
-  publish(tracks);
+  publish(tracks.map((track) => straightened(track, tracks)));
   useLibrary.setState({ scan: null });
   return library().tracks as Track[];
 }

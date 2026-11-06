@@ -83,6 +83,11 @@ export class AutoDirector {
     this.nowDb = null;
   }
 
+  /** A word went up without being asked for here, and it counts towards the cooldown. */
+  wordShown(): void {
+    this.sinceWord = 0;
+  }
+
   /** Whether to spell the word now, in the climb, for the drop to smash. */
   takeBuildWord(audio: AudioFeatures): boolean {
     if (audio.tension < WORD_BUILD_FROM || this.sinceWord < WORD_COOLDOWN_S) return false;

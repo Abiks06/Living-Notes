@@ -12,6 +12,11 @@ export type ActiveSource =
   | { kind: 'mic' }
   | { kind: 'tab' };
 
+/** Sound coming from outside the app, which it can hear but not play, pause or skip. */
+export function isLiveSource(source: ActiveSource | null): boolean {
+  return source?.kind === 'mic' || source?.kind === 'tab';
+}
+
 export type MicStatus =
   'idle' | 'requesting' | 'live' | 'denied' | 'unsupported' | 'missing' | 'busy';
 
