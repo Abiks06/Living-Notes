@@ -2121,6 +2121,12 @@ button {
   min-height: 24px;
 }
 
+.menu__links {
+  display: flex;
+  flex: none;
+  gap: 14px;
+}
+
 .menu__more {
   flex: none;
   padding: 4px 0;
