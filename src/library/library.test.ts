@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { addLooseFiles, type Track, useLibrary } from './library';
+import { addFolderFiles, addLooseFiles, type Track, useLibrary } from './library';
 
 const song = (id: string, title: string, artist: string, guessed = false): Track => ({
   id,
@@ -49,5 +49,17 @@ describe('names read backwards', () => {
 
     expect(useLibrary.getState().nowPlaying?.title).toBe('Her');
     expect(useLibrary.getState().nowPlaying?.artist).toBe('Royel Otis');
+  });
+});
+
+describe('dropping songs during a folder scan', () => {
+  it('keeps them when the scan finishes', async () => {
+    useLibrary.setState({ tracks: [], byId: new Map(), scan: null });
+    const scanning = addFolderFiles([untagged('Lana Del Rey - Cinnamon Girl.mp3')]);
+    const [dropped] = await addLooseFiles([untagged('The Weeknd - Shameless.mp3')]);
+    await scanning;
+    const titles = useLibrary.getState().tracks.map((track) => track.title);
+    expect(titles).toEqual(expect.arrayContaining(['Cinnamon Girl', 'Shameless']));
+    expect(useLibrary.getState().byId.has(dropped?.id ?? '')).toBe(true);
   });
 });

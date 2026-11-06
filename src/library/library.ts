@@ -92,6 +92,8 @@ const library = () => useLibrary.getState();
 
 /** Enough files read at once to hide the disk's latency, not so many that it thrashes. */
 const SCAN_WIDTH = 8;
+/** Where songs that came in loose, rather than from a folder, are filed. */
+const DROPPED = 'dropped/';
 /** How often the list refreshes during a scan: every track would mean a render for each. */
 const SCAN_REFRESH_MS = 250;
 /** Raise when tags learn something new, so songs scanned before are read again. */
@@ -162,6 +164,12 @@ async function describe(found: Found): Promise<Track | null> {
 /** Reads every file's tags, a few at a time, showing songs as they're found. */
 async function addAll(found: readonly Found[], folder: string): Promise<Track[]> {
   const tracks: Track[] = [];
+  const earlier = new Set(library().tracks.map((track) => track.id));
+  // Songs dropped in while this runs aren't part of the folder, but they're still in the library.
+  const withDropped = () => [
+    ...library().tracks.filter((track) => track.id.startsWith(DROPPED) && !earlier.has(track.id)),
+    ...tracks,
+  ];
   useLibrary.setState({ folder, saved: null, scan: { done: 0, total: found.length } });
   let next = 0;
   let last = performance.now();
@@ -174,13 +182,13 @@ async function addAll(found: readonly Found[], folder: string): Promise<Track[]>
       const now = performance.now();
       if (now - last >= SCAN_REFRESH_MS) {
         last = now;
-        publish(tracks);
+        publish(withDropped());
         useLibrary.setState({ scan: { done: tracks.length, total: found.length } });
       }
     }
   };
   await Promise.all(Array.from({ length: SCAN_WIDTH }, worker));
-  publish(tracks);
+  publish(withDropped());
   useLibrary.setState({ scan: null });
   return library().tracks as Track[];
 }
@@ -323,7 +331,7 @@ export async function addLooseFiles(files: readonly File[]): Promise<Track[]> {
   const tracks = await Promise.all(
     files.map((file) =>
       describe({
-        path: `dropped/${file.name}/${file.size}`,
+        path: `${DROPPED}${file.name}/${file.size}`,
         open: () => Promise.resolve(file),
       }),
     ),
