@@ -1,0 +1,37 @@
+# Builds the Windows app and publishes it as a GitHub release when a version tag is pushed.
+# Installed apps update from these releases, and the website's download link points at them.
+name: Release Windows app
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Check the tag matches the app version
+        shell: bash
+        run: test "v$(node -p "require('./desktop/package.json').version")" = "$GITHUB_REF_NAME"
+
+      - name: Install the site's dependencies
+        run: npm ci
+
+      - name: Install the app's dependencies
+        run: npm ci
+        working-directory: desktop
+
+      - name: Build and publish
+        run: npm run release
+        working-directory: desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

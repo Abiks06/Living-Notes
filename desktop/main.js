@@ -21,6 +21,8 @@ const ROOT = app.getAppPath();
 const SITE = app.isPackaged ? join(ROOT, 'site') : resolve(ROOT, '../dist');
 const WINDOW_STATE = join(app.getPath('userData'), 'window.json');
 
+const UPDATE_DELAY_MS = 10_000;
+
 /** Only what the app uses, so nothing else can be switched on from the page. */
 const PERMISSIONS = new Set([
   'media',
@@ -146,6 +148,23 @@ function openWindow() {
   return window;
 }
 
+/**
+ * Asks GitHub for a newer version and downloads it quietly. It installs when the app next
+ * closes, so nothing interrupts a song. This is the app's only network request, it runs here
+ * rather than in the page, and it sends nothing about the music.
+ */
+async function checkForUpdates() {
+  if (!app.isPackaged) return;
+  try {
+    // Loaded late, so it costs the launch nothing.
+    const { default: updater } = await import('electron-updater');
+    updater.autoUpdater.on('error', () => undefined);
+    await updater.autoUpdater.checkForUpdates();
+  } catch {
+    // Offline, or GitHub is down: the next launch tries again.
+  }
+}
+
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
@@ -161,5 +180,6 @@ if (!app.requestSingleInstanceLock()) {
     session.defaultSession.protocol.handle(SCHEME, serve);
     lockDown(session.defaultSession);
     main = openWindow();
+    setTimeout(checkForUpdates, UPDATE_DELAY_MS);
   });
 }

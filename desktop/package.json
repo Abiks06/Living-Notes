@@ -10,7 +10,8 @@
   "scripts": {
     "site": "npm --prefix .. run build",
     "start": "npm run site && electron .",
-    "dist": "npm run site && electron-builder --win -c.directories.output=%LOCALAPPDATA%/resonance-build"
+    "dist": "npm run site && electron-builder --win -c.directories.output=%LOCALAPPDATA%/resonance-build",
+    "release": "npm run site && electron-builder --win --publish always"
   },
   "devDependencies": {
     "electron": "45.2.3",
@@ -59,7 +60,7 @@
       "oneClick": true,
       "perMachine": false,
       "shortcutName": "Resonance",
-      "artifactName": "Resonance-Setup-${version}.exe"
+      "artifactName": "Resonance-Setup.${ext}"
     },
     "electronFuses": {
       "runAsNode": false,
@@ -68,6 +69,15 @@
       "enableEmbeddedAsarIntegrityValidation": true,
       "onlyLoadAppFromAsar": true,
       "grantFileProtocolExtraPrivileges": false
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "Abiks06",
+      "repo": "Living-Notes",
+      "releaseType": "release"
     }
+  },
+  "dependencies": {
+    "electron-updater": "6.8.11"
   }
 }
