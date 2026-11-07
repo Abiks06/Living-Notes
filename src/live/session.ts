@@ -18,8 +18,11 @@ export interface MediaSession {
   canPrevious: boolean;
 }
 
-/** This app's own session, which is never what system audio is listening to. */
-const OWN_SESSION = 'app.livingnotes.resonance';
+/**
+ * This app's own session, which is never what system audio is listening to. A Store install has
+ * an id Windows makes from the package name, and that still has the app's name in it.
+ */
+const OWN_SESSION = /^app\.livingnotes\.resonance$|resonance.*!/i;
 
 /**
  * Which session system audio is hearing. Something playing beats something paused, and the one
@@ -30,7 +33,7 @@ export function pickSession(
   sessions: readonly MediaSession[],
   currentId: string | null,
 ): MediaSession | null {
-  const others = sessions.filter((session) => session.id !== OWN_SESSION && session.title);
+  const others = sessions.filter((session) => !OWN_SESSION.test(session.id) && session.title);
   const playing = others.filter((session) => session.status === 'playing');
   const current = (list: readonly MediaSession[]) => list.find((s) => s.id === currentId);
   const latest = [...others].sort((a, b) => b.updated - a.updated)[0];

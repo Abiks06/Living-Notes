@@ -12,6 +12,7 @@
     "start": "npm run helper && npm run site && electron .",
     "dist": "npm run helper && npm run site && electron-builder --win -c.directories.output=%LOCALAPPDATA%/resonance-build",
     "release": "npm run helper && npm run site && electron-builder --win --publish always",
+    "store": "npm run helper && npm run site && electron-builder --win appx -c.directories.output=%LOCALAPPDATA%/resonance-store",
     "helper": "node now-playing/build.mjs"
   },
   "devDependencies": {
@@ -58,6 +59,15 @@
         }
       ],
       "icon": "../public/icons/icon-512.png"
+    },
+    "appx": {
+      "applicationId": "Resonance",
+      "displayName": "Resonance",
+      "backgroundColor": "#05050a",
+      "showNameOnTiles": false,
+      "languages": [
+        "en-US"
+      ]
     },
     "nsis": {
       "oneClick": true,

@@ -17,6 +17,14 @@ const session = (id: string, status: string, title = 'A Song'): MediaSession => 
 });
 
 describe('pickSession', () => {
+  it('never picks this app, however it was installed', () => {
+    const own = [
+      session('app.livingnotes.resonance', 'playing'),
+      session('12345Ayomide.Resonance_abc123!Resonance', 'playing'),
+    ];
+    expect(pickSession(own, null)).toBeNull();
+  });
+
   it('picks what’s actually playing over something paused', () => {
     const list = [session('Chrome', 'paused'), session('Spotify', 'playing')];
     expect(pickSession(list, 'Chrome')?.id).toBe('Spotify');

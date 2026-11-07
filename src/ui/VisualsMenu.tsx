@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { PRIVACY_URL } from '../lib/desktop';
 import { useLibrary } from '../library/library';
 import { LYRICS_MODES, useLyrics } from '../lyrics/lyrics';
 import { installApp, useInstallOffer } from '../pwa/install';
@@ -67,6 +68,9 @@ function YouSection() {
           onChange={(event) => setName(event.currentTarget.value)}
         />
       </label>
+      <a className="menu__more menu__forget" href={PRIVACY_URL} target="_blank" rel="noreferrer">
+        Privacy
+      </a>
       <button
         type="button"
         className="menu__more menu__forget"

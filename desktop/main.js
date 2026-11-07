@@ -29,6 +29,8 @@ const HELPER = app.isPackaged
   : join(ROOT, 'now-playing', 'NowPlaying.exe');
 
 const UPDATE_DELAY_MS = 10_000;
+/** Crashing again this soon means reloading isn't helping, so it stops rather than looping. */
+const CRASH_LOOP_MS = 30_000;
 
 /** Only what the app uses, so nothing else can be switched on from the page. */
 const PERMISSIONS = new Set([
@@ -60,7 +62,8 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 // Groups the window with its shortcut on the taskbar, and names it in Windows' media controls.
-app.setAppUserModelId('app.livingnotes.resonance');
+// A Store install already has its own identity, and a different one would split the two.
+if (!process.windowsStore) app.setAppUserModelId('app.livingnotes.resonance');
 
 // Older drivers on Chromium's blocklist would otherwise lose WebGL2 and fall back to the CPU.
 app.commandLine.appendSwitch('ignore-gpu-blocklist');
@@ -150,6 +153,13 @@ function openWindow() {
     if (url.startsWith('https://')) void shell.openExternal(url);
     return { action: 'deny' };
   });
+  // A graphics driver can take the page down with it. Coming back beats a blank window.
+  let lastCrash = -Infinity;
+  window.webContents.on('render-process-gone', (_event, { reason }) => {
+    if (reason === 'clean-exit' || Date.now() - lastCrash < CRASH_LOOP_MS) return;
+    lastCrash = Date.now();
+    window.webContents.reload();
+  });
   window.webContents.on('will-navigate', (event, url) => {
     if (!url.startsWith(`${ORIGIN}/`)) event.preventDefault();
   });
@@ -175,7 +185,8 @@ function awakeKeeper() {
  * nothing about the music.
  */
 async function checkForUpdates() {
-  if (!app.isPackaged) return;
+  // The Store keeps its own installs up to date.
+  if (!app.isPackaged || process.windowsStore) return;
   try {
     // Loaded late, so it costs the launch nothing.
     const { default: updater } = await import('electron-updater');
