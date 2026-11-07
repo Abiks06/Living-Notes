@@ -9,6 +9,8 @@ const session = (id: string, status: string, title = 'A Song'): MediaSession => 
   album: '',
   status,
   updated: 0,
+  position: 0,
+  duration: 0,
   canToggle: true,
   canNext: true,
   canPrevious: true,

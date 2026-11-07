@@ -134,6 +134,10 @@ export class AudioEngine {
   }
 
   /** Play/pause/seek for the current source; null for the microphone or when idle. */
+  get currentScore(): Score | null {
+    return this.score;
+  }
+
   get transport(): Transport | null {
     return this.current?.handle.transport ?? null;
   }

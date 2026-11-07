@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useLibrary } from '../library/library';
+import { LYRICS_MODES, useLyrics } from '../lyrics/lyrics';
 import { installApp, useInstallOffer } from '../pwa/install';
 import { MORPH_SHAPES, SCENES } from '../scene/scenes';
 import { APPEARANCES, useAppearance } from '../settings/appearance';
@@ -19,6 +20,36 @@ const CROSSFADES = [
 const SHAPE_OPTIONS = [{ key: 'auto', label: 'Auto' }, ...MORPH_SHAPES] as const;
 
 /** Everything about how the show looks, kept out of sight until it's asked for. */
+/** Off until asked for, because it's the one thing that sends a song's name anywhere. */
+function LyricsRow() {
+  const mode = useLyrics((state) => state.mode);
+  const found = useLyrics((state) => state.status);
+  const setMode = useLyrics((state) => state.setMode);
+  return (
+    <>
+      <div className="menu__row">
+        <span id="lyrics-label">Lyrics</span>
+        <div className="menu__segments" role="group" aria-labelledby="lyrics-label">
+          {LYRICS_MODES.map(({ key, label, hint }) => (
+            <button
+              key={key}
+              type="button"
+              title={hint}
+              aria-pressed={mode === key}
+              onClick={() => setMode(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {mode !== 'off' && found === 'none' && (
+        <p className="menu__note">No timed lyrics found for this song.</p>
+      )}
+    </>
+  );
+}
+
 /** What the app knows about you, which never leaves this device. */
 function YouSection() {
   const name = useProfile((state) => state.name);
@@ -179,6 +210,7 @@ export function VisualsMenu({ onClose }: { onClose: () => void }) {
             ))}
           </div>
         </div>
+        <LyricsRow />
         <label className="menu__row">
           Colours from album art
           <input

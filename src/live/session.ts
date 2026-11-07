@@ -10,6 +10,9 @@ export interface MediaSession {
   status: string;
   /** When the app last reported its place in the song, in milliseconds. */
   updated: number;
+  /** Its place in the song and the song's length, in seconds. */
+  position: number;
+  duration: number;
   canToggle: boolean;
   canNext: boolean;
   canPrevious: boolean;

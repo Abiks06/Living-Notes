@@ -26,6 +26,11 @@ export interface LiveSong {
   album: string;
   art: string | null;
   playing: boolean;
+  /** Where the app last said it was in the song, in seconds, and when, in milliseconds. */
+  position: number;
+  positionAt: number;
+  /** Seconds, or 0 if the app doesn't say. */
+  duration: number;
   canToggle: boolean;
   canNext: boolean;
   canPrevious: boolean;

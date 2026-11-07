@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Vector3 } from 'three';
 import { audioFeatures } from '../../audio/features';
 import { useReducedMotion } from '../../lib/useMediaQuery';
+import { useLyrics } from '../../lyrics/lyrics';
 import { benchmarkProbe } from '../../perf/benchmarkProbe';
 import { liveLook } from '../../settings/bindings';
 import { DEFAULT_WORD } from '../../settings/schema';
@@ -46,6 +47,7 @@ export function ParticleField() {
   const source = useAppStore((state) => state.source);
   const greeting = useProfile((state) => state.greeting);
   const spelling = useProfile((state) => state.spelling);
+  const lyric = useLyrics((state) => state.spell);
   const reducedMotion = useReducedMotion();
   const gpuKey = useMemo(() => describeGpu(gl), [gl]);
   const [simulation, setSimulation] = useState<ParticleSimulation | null>(null);
@@ -125,6 +127,16 @@ export function ParticleField() {
     );
     return () => window.clearTimeout(timer);
   }, [spelling]);
+
+  // A lyric borrows the word for a moment, then hands it straight back.
+  useEffect(() => {
+    if (!simulation || !lyric) return;
+    simulation.setFlashWord(lyric);
+    return () => {
+      const now = useAppStore.getState().source;
+      simulation.setFlashWord(flashWordFor(now, useSettings.getState().word));
+    };
+  }, [simulation, lyric]);
 
   // A song's own title is spelled on its first drop, and Auto-VJ spells words on any song. It
   // waits until a song is under way, as rasterizing would stall a crossfade.

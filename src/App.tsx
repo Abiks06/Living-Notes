@@ -7,6 +7,7 @@ import { beginVisit } from './state/profile';
 import { CaptureGuide } from './ui/CaptureGuide';
 import { DropZone } from './ui/DropZone';
 import { LoungeBadge } from './ui/LoungeBadge';
+import { LyricsLine, LyricsOffer } from './ui/Lyrics';
 import { MicNotice } from './ui/MicNotice';
 import { NoticeToast } from './ui/NoticeToast';
 import { PerfOverlay } from './ui/PerfOverlay';
@@ -78,6 +79,8 @@ export function App() {
       </header>
       <TitleCard />
       <Greeting />
+      <LyricsLine />
+      <LyricsOffer />
       <NameCard />
       <StartOverlay />
       <InteractionHint />

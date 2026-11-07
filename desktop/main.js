@@ -171,8 +171,8 @@ function awakeKeeper() {
 
 /**
  * Asks GitHub for a newer version and downloads it quietly. It installs when the app next
- * closes, so nothing interrupts a song. This is the app's only network request, it runs here
- * rather than in the page, and it sends nothing about the music.
+ * closes, so nothing interrupts a song. It runs here rather than in the page, and it sends
+ * nothing about the music.
  */
 async function checkForUpdates() {
   if (!app.isPackaged) return;

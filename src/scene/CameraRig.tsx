@@ -11,6 +11,7 @@ import { useAppStore } from '../state/appStore';
 import { partMemory } from './partLook';
 import { sceneDirector } from './SceneDirector';
 import { sceneByKey } from './scenes';
+import { useLibraryRoom } from './useLibraryRoom';
 
 const GLIDE_S = 1.8;
 /** Auto-orbit waits this long after the visitor lets go before taking over again. */
@@ -53,6 +54,7 @@ export function CameraRig() {
   const captureFraming = useAppStore((state) => state.captureFraming);
   const appliedFraming = useRef(1);
   const reducedMotion = useReducedMotion();
+  useLibraryRoom();
   const controls = useRef<ComponentRef<typeof OrbitControls>>(null);
   const groove = useRef({ amount: 0, applied: new Vector3(), next: new Vector3() });
   const dolly = useRef({ scale: 1, applied: 1 });

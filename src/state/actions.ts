@@ -21,6 +21,7 @@ import { onSongEnded, startPlayer } from '../library/player';
 import { restoreLibrary } from '../library/library';
 import { setSongColours } from '../settings/bindings';
 import { isLiveSource, useAppStore } from './appStore';
+import { alignLyrics, startLyrics } from '../lyrics/lyrics';
 import { markReturning } from './returning';
 
 /** How long a new microphone gets before silence from it is treated as a problem. */
@@ -35,6 +36,7 @@ export function prepareAudio(): void {
   audioEngine.startLoop();
   audioEngine.setEndedHandler(onLiveSourceEnded);
   startPlayer();
+  startLyrics();
   void restoreLibrary();
   audioEngine.setScoreHandler((score) => {
     // A song going away also abandons anything still being learned about it.
@@ -43,6 +45,7 @@ export function prepareAudio(): void {
       store().setLearning(false);
     }
     store().setSong(score ? summarise(score) : null);
+    alignLyrics();
   });
   void isTrackFileAvailable(DEFAULT_DEMO);
   if (typeof OfflineAudioContext !== 'undefined') {
