@@ -5,6 +5,7 @@ import { MORPH_SHAPES, SCENES } from '../scene/scenes';
 import { APPEARANCES, useAppearance } from '../settings/appearance';
 import { useSettings } from '../settings/settingsStore';
 import { useAppStore } from '../state/appStore';
+import { MAX_NAME_LENGTH, useProfile } from '../state/profile';
 import { CastList } from './CastList';
 import { MusicDna } from './MusicDna';
 import { STUDIO_TOGGLE_ID } from './studio/studioIds';
@@ -18,6 +19,35 @@ const CROSSFADES = [
 const SHAPE_OPTIONS = [{ key: 'auto', label: 'Auto' }, ...MORPH_SHAPES] as const;
 
 /** Everything about how the show looks, kept out of sight until it's asked for. */
+/** What the app knows about you, which never leaves this device. */
+function YouSection() {
+  const name = useProfile((state) => state.name);
+  const setName = useProfile((state) => state.setName);
+  const forget = useProfile((state) => state.forget);
+  return (
+    <div className="menu__rows">
+      <label className="menu__row">
+        Your name
+        <input
+          className="menu__name"
+          value={name}
+          maxLength={MAX_NAME_LENGTH}
+          autoComplete="given-name"
+          onChange={(event) => setName(event.currentTarget.value)}
+        />
+      </label>
+      <button
+        type="button"
+        className="menu__more menu__forget"
+        title="Clears your name, visits and who you play most, from this device"
+        onClick={forget}
+      >
+        Forget me
+      </button>
+    </div>
+  );
+}
+
 export function VisualsMenu({ onClose }: { onClose: () => void }) {
   const scene = useSettings((state) => state.scene);
   const auto = useSettings((state) => state.autoDirector);
@@ -159,6 +189,8 @@ export function VisualsMenu({ onClose }: { onClose: () => void }) {
           />
         </label>
       </div>
+
+      <YouSection />
 
       <footer className="menu__footer">
         <MusicDna />

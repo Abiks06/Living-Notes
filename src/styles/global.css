@@ -2597,3 +2597,84 @@ button {
 .title-card__detail {
   overflow-wrap: anywhere;
 }
+
+/* Said once when someone comes back, where the particles can't say it themselves. */
+.greeting {
+  position: absolute;
+  inset: 42% 0 auto;
+  margin: 0;
+  padding: 0 6vw;
+  color: var(--text);
+  font-size: clamp(28px, 5vw, 56px);
+  font-weight: 300;
+  letter-spacing: -0.01em;
+  text-align: center;
+  pointer-events: none;
+  animation: title-in 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.name-card {
+  position: absolute;
+  right: max(24px, env(safe-area-inset-right));
+  bottom: 112px;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(300px, calc(100vw - 48px));
+  padding: 14px;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  background: var(--panel-strong);
+  color: var(--text);
+  font-size: 13px;
+  animation: title-in 500ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.name-card__input,
+.menu__name {
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+}
+
+.menu__name {
+  width: 140px;
+}
+
+.name-card__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.name-card__save,
+.name-card__skip {
+  flex: 1;
+  height: 32px;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.name-card__save:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.name-card__note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.menu__forget {
+  align-self: flex-start;
+}
