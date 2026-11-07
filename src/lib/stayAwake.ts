@@ -46,6 +46,8 @@ export function startStayingAwake(): () => void {
   const desktop = window.resonanceDesktop?.keepAwake;
   const hold = desktop ?? webLock();
   let held = false;
+  // A page that crashed never let go, and this one would otherwise keep the PC up for good.
+  desktop?.(false);
 
   const timer = window.setInterval(() => {
     const on = rule.update(CHECK_S, document.fullscreenElement !== null, isHearing());

@@ -10,7 +10,9 @@ export function useRememberPlays(): void {
   const live = useAppStore((state) => state.liveSong);
   const key = live?.key ?? local?.id ?? null;
   useEffect(() => {
-    if (key) notePlay(live?.artist ?? local?.artist ?? '');
+    // A guess from a file name can be the song, and "More Crown?" helps nobody.
+    const named = local?.guessed ? '' : (local?.artist ?? '');
+    if (key) notePlay(live?.artist ?? named);
     // Once per song, not each time more is learned about it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);

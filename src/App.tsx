@@ -65,7 +65,7 @@ export function App() {
       className="app"
       data-chrome={chromeHidden ? 'hidden' : 'visible'}
       data-phase={phase}
-      data-library={libraryOpen ? 'open' : 'closed'}
+      data-library={libraryOpen && !chromeHidden ? 'open' : 'closed'}
     >
       {painted && (
         <Suspense fallback={null}>

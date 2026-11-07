@@ -21,9 +21,10 @@ export function useLibraryRoom(): void {
 
   useFrame((state, delta) => {
     const { width, height } = state.size;
-    const open = useLibrary.getState().open;
-    const recording = useAppStore.getState().recording.state === 'recording';
-    const target = open && !recording && width >= WIDE_ENOUGH_PX ? LIBRARY_PX / 2 : 0;
+    const { lounge, recording, uiHiddenManual } = useAppStore.getState();
+    const showing =
+      useLibrary.getState().open && !lounge && !uiHiddenManual && recording.state === 'idle';
+    const target = showing && width >= WIDE_ENOUGH_PX ? LIBRARY_PX / 2 : 0;
     shift.current += (target - shift.current) * (1 - Math.exp(-Math.min(delta, 0.1) / EASE_S));
     if (Math.abs(target - shift.current) < 0.5) shift.current = target;
 

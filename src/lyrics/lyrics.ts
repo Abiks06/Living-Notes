@@ -95,6 +95,9 @@ export function currentSong(): SongName | null {
   };
 }
 
+/** Past when a moment is prepared, so one that's about to land keeps its word. */
+const HOLD_WORD_S = 2;
+
 let wanted: string | null = null;
 let raw: readonly LyricLine[] = [];
 /** How long the recording they were timed to is. */
@@ -193,7 +196,8 @@ export function prepareMoment(text: string): void {
 export function spokenMoment(wordShowing: boolean): void {
   if (firing === null || wordShowing) return;
   const upcoming = nextMoment();
-  if (upcoming?.text === firing) return;
+  // Still on its way. The same line coming round again later doesn't count.
+  if (upcoming?.text === firing && upcoming.in <= HOLD_WORD_S) return;
   firing = null;
   useLyrics.setState({ spell: null });
 }

@@ -97,9 +97,9 @@ export function SceneDriver() {
     }
     // A lyric forms just as it's sung, so it starts a moment ahead of the singer.
     const moment = reducedMotion ? null : nextMoment();
-    if (moment) {
+    if (moment && !sceneDirector.wordFlash) {
       if (moment.in <= MOMENT_PREPARE_S) prepareMoment(moment.text);
-      if (moment.in <= MOMENT_LEAD_S && !sceneDirector.wordFlash) {
+      if (moment.in <= MOMENT_LEAD_S && useLyrics.getState().spell === moment.text) {
         const up = sceneDirector.flashWord(
           sceneByKey(settings.scene),
           audioFeatures.snareCount,
