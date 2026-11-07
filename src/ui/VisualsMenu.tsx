@@ -1,10 +1,13 @@
 import { useEffect, useRef } from 'react';
+import { PRIVACY_URL } from '../lib/desktop';
 import { useLibrary } from '../library/library';
+import { LYRICS_MODES, useLyrics } from '../lyrics/lyrics';
 import { installApp, useInstallOffer } from '../pwa/install';
 import { MORPH_SHAPES, SCENES } from '../scene/scenes';
 import { APPEARANCES, useAppearance } from '../settings/appearance';
 import { useSettings } from '../settings/settingsStore';
 import { useAppStore } from '../state/appStore';
+import { MAX_NAME_LENGTH, useProfile } from '../state/profile';
 import { CastList } from './CastList';
 import { MusicDna } from './MusicDna';
 import { STUDIO_TOGGLE_ID } from './studio/studioIds';
@@ -18,6 +21,68 @@ const CROSSFADES = [
 const SHAPE_OPTIONS = [{ key: 'auto', label: 'Auto' }, ...MORPH_SHAPES] as const;
 
 /** Everything about how the show looks, kept out of sight until it's asked for. */
+/** Off until asked for, because it's the one thing that sends a song's name anywhere. */
+function LyricsRow() {
+  const mode = useLyrics((state) => state.mode);
+  const found = useLyrics((state) => state.status);
+  const setMode = useLyrics((state) => state.setMode);
+  return (
+    <>
+      <div className="menu__row">
+        <span id="lyrics-label">Lyrics</span>
+        <div className="menu__segments" role="group" aria-labelledby="lyrics-label">
+          {LYRICS_MODES.map(({ key, label, hint }) => (
+            <button
+              key={key}
+              type="button"
+              title={hint}
+              aria-pressed={mode === key}
+              onClick={() => setMode(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {mode !== 'off' && found === 'none' && (
+        <p className="menu__note">No timed lyrics found for this song.</p>
+      )}
+    </>
+  );
+}
+
+/** What the app knows about you, which never leaves this device. */
+function YouSection() {
+  const name = useProfile((state) => state.name);
+  const setName = useProfile((state) => state.setName);
+  const forget = useProfile((state) => state.forget);
+  return (
+    <div className="menu__rows">
+      <label className="menu__row">
+        Your name
+        <input
+          className="menu__name"
+          value={name}
+          maxLength={MAX_NAME_LENGTH}
+          autoComplete="given-name"
+          onChange={(event) => setName(event.currentTarget.value)}
+        />
+      </label>
+      <a className="menu__more menu__forget" href={PRIVACY_URL} target="_blank" rel="noreferrer">
+        Privacy
+      </a>
+      <button
+        type="button"
+        className="menu__more menu__forget"
+        title="Clears your name, visits and who you play most, from this device"
+        onClick={forget}
+      >
+        Forget me
+      </button>
+    </div>
+  );
+}
+
 export function VisualsMenu({ onClose }: { onClose: () => void }) {
   const scene = useSettings((state) => state.scene);
   const auto = useSettings((state) => state.autoDirector);
@@ -149,6 +214,7 @@ export function VisualsMenu({ onClose }: { onClose: () => void }) {
             ))}
           </div>
         </div>
+        <LyricsRow />
         <label className="menu__row">
           Colours from album art
           <input
@@ -159,6 +225,8 @@ export function VisualsMenu({ onClose }: { onClose: () => void }) {
           />
         </label>
       </div>
+
+      <YouSection />
 
       <footer className="menu__footer">
         <MusicDna />

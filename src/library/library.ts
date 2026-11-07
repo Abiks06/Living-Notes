@@ -1,5 +1,7 @@
 import { create } from 'zustand';
+import { isReturning, markReturning } from '../state/returning';
 import { EMPTY_QUEUE, type PlayQueue, syncQueue } from './queue';
+import type { ResumePoint } from './resume';
 import { readCachedTags, readSetting, writeCachedTags, writeSetting } from './storage';
 import { cleanTitle, nameParts, namedBackwards, readTags, type Tags } from './tags';
 
@@ -46,6 +48,8 @@ interface LibraryState {
   comingUp: Track | null;
   crossfade: number;
   artColours: boolean;
+  /** The song to carry on with, until something else starts. */
+  resume: ResumePoint | null;
   open: boolean;
   /** Slid in by the mouse at the edge of the window, rather than opened on purpose. */
   peek: LibraryPeek;
@@ -70,7 +74,9 @@ export const useLibrary = create<LibraryState>()((set) => ({
   comingUp: null,
   crossfade: 3,
   artColours: true,
-  open: false,
+  resume: null,
+  // A player opens on your music.
+  open: isReturning(),
   peek: 'off',
   // Opening it on purpose takes over from a peek, so it stays until it's closed.
   setOpen: (open) => set({ open, peek: 'off' }),
@@ -190,6 +196,10 @@ async function addAll(found: readonly Found[], folder: string): Promise<Track[]>
   await Promise.all(Array.from({ length: SCAN_WIDTH }, worker));
   publish(withDropped());
   useLibrary.setState({ scan: null });
+  if (tracks.length > 0) markReturning();
+  // The song may have been moved, or this may be a different folder.
+  const { resume, byId } = library();
+  if (resume && !byId.has(resume.id)) useLibrary.setState({ resume: null });
   return library().tracks as Track[];
 }
 
@@ -344,16 +354,23 @@ export async function addLooseFiles(files: readonly File[]): Promise<Track[]> {
 
 /** On load: brings back last time's folder and settings. Nothing is asked without a click. */
 export async function restoreLibrary(): Promise<void> {
-  const [crossfade, artColours, folder] = await Promise.all([
+  const [crossfade, artColours, folder, lastSong] = await Promise.all([
     readSetting<number>('crossfade'),
     readSetting<boolean>('artColours'),
     readSetting<FolderHandle>('folder'),
+    readSetting<ResumePoint>('lastSong'),
   ]);
   if (crossfade !== undefined) useLibrary.setState({ crossfade });
   if (artColours !== undefined) useLibrary.setState({ artColours });
   if (!folder?.queryPermission) return;
+  // Shown straight away, as a folder can take a moment to read or need a click to reopen.
+  if (lastSong) useLibrary.setState({ resume: lastSong });
   if ((await folder.queryPermission({ mode: 'read' })) === 'granted') await scanFolder(folder);
   else useLibrary.setState({ saved: folder.name });
+}
+
+export function writeLastSong(point: ResumePoint): void {
+  void writeSetting('lastSong', point);
 }
 
 /** One click to get back into last time's folder. */

@@ -2,7 +2,13 @@ import { audioEngine, type PlayOptions } from '../audio/AudioEngine';
 import type { Actor } from '../audio/cast';
 import { DEFAULT_DEMO, findDemo, isTrackFileAvailable } from '../audio/demoTracks';
 import { AudioError, toAudioError } from '../audio/errors';
-import { openMicrophone, openTabAudio, playBuffer, playMediaUrl } from '../audio/sources';
+import {
+  isMicMuted,
+  openMicrophone,
+  openTabAudio,
+  playBuffer,
+  playMediaUrl,
+} from '../audio/sources';
 import { scoreFromMix, scoreFromStems } from '../audio/score/loadScore';
 import type { Score } from '../audio/score/score';
 import { summarise } from '../audio/score/songMap';
@@ -10,10 +16,16 @@ import { renderProofSong } from '../audio/synth/proofSong';
 import { renderDemoLoop } from '../audio/synth/renderLoop';
 import { IS_DESKTOP, LIVE_AUDIO_LABEL } from '../lib/desktop';
 import { useLibrary } from '../library/library';
+import { controlLive } from '../live/nowPlaying';
 import { onSongEnded, startPlayer } from '../library/player';
 import { restoreLibrary } from '../library/library';
 import { setSongColours } from '../settings/bindings';
 import { isLiveSource, useAppStore } from './appStore';
+import { alignLyrics, startLyrics } from '../lyrics/lyrics';
+import { markReturning } from './returning';
+
+/** How long a new microphone gets before silence from it is treated as a problem. */
+const MIC_CHECK_MS = 1200;
 
 const AUDIO_EXTENSIONS = /\.(mp3|wav|ogg|oga|m4a|aac|flac|webm|opus)$/i;
 
@@ -24,6 +36,7 @@ export function prepareAudio(): void {
   audioEngine.startLoop();
   audioEngine.setEndedHandler(onLiveSourceEnded);
   startPlayer();
+  startLyrics();
   void restoreLibrary();
   audioEngine.setScoreHandler((score) => {
     // A song going away also abandons anything still being learned about it.
@@ -32,6 +45,7 @@ export function prepareAudio(): void {
       store().setLearning(false);
     }
     store().setSong(score ? summarise(score) : null);
+    alignLyrics();
   });
   void isTrackFileAvailable(DEFAULT_DEMO);
   if (typeof OfflineAudioContext !== 'undefined') {
@@ -152,6 +166,15 @@ export async function enableMic(): Promise<void> {
     store().setMic('live');
     forgetSong();
     store().setSource({ kind: 'mic' });
+    // A stream can take a moment to report it, and the visuals would just look broken.
+    window.setTimeout(() => {
+      if (store().source?.kind !== 'mic' || !isMicMuted()) return;
+      store().showNotice({
+        tone: 'info',
+        title: 'Your microphone is muted',
+        body: 'No sound is reaching the app. Unmute it in your sound settings, or with the mic key on your keyboard.',
+      });
+    }, MIC_CHECK_MS);
   } else if (store().mic === 'requesting') {
     store().setMic('idle');
   }
@@ -164,6 +187,7 @@ export async function enableTabAudio(): Promise<void> {
   const ok = await switchSource(LIVE_AUDIO_LABEL, openTabAudio);
   if (ok) {
     forgetSong();
+    markReturning();
     store().setSource({ kind: 'tab' });
   }
 }
@@ -202,8 +226,12 @@ export function selectMicDevice(id: string | null): void {
 }
 
 export function togglePlayback(): void {
+  if (isLiveSource(store().source)) {
+    controlLive('toggle');
+    return;
+  }
   const transport = audioEngine.transport;
-  if (!transport || isLiveSource(store().source)) return;
+  if (!transport) return;
   if (transport.paused) transport.play();
   else transport.pause();
   store().setPaused(transport.paused);

@@ -3,9 +3,16 @@ import { audioEngine } from '../audio/AudioEngine';
 import { LIVE_AUDIO_LABEL } from '../lib/desktop';
 import { formatTime } from '../lib/formatTime';
 import { artFor } from '../library/art';
+import { type ResumePoint, resumeFrom } from '../library/resume';
 import { useLibrary } from '../library/library';
-import { playTracks, skipNext, skipPrevious, toggleRepeat, toggleShuffle } from '../library/player';
-import { ensureStarted, setVolume, toggleMute, togglePlayback } from '../state/actions';
+import {
+  playOrResume,
+  skipNext,
+  skipPrevious,
+  toggleRepeat,
+  toggleShuffle,
+} from '../library/player';
+import { setVolume, toggleMute } from '../state/actions';
 import { useSettings } from '../settings/settingsStore';
 import { type ActiveSource, isLiveSource, useAppStore } from '../state/appStore';
 import {
@@ -30,12 +37,19 @@ const CLOCK_INTERVAL_S = 1 / 4;
 /** Matches the player's small layout in global.css. */
 const NARROW = '(max-width: 720px)';
 
-function describe(source: ActiveSource | null): { title: string; detail: string } {
+function describe(
+  source: ActiveSource | null,
+  resume: ResumePoint | null,
+): { title: string; detail: string } {
+  if (!source && resume) {
+    const left = resumeFrom(resume.position, 0) > 0 ? ` · ${formatTime(resume.position)}` : '';
+    return { title: resume.title, detail: `${resume.artist}${left}` };
+  }
   switch (source?.kind) {
     case 'mic':
       return { title: 'Microphone', detail: 'Listening live' };
     case 'tab':
-      return { title: LIVE_AUDIO_LABEL, detail: 'Listening live' };
+      return { title: source.title ?? LIVE_AUDIO_LABEL, detail: source.artist || 'Listening live' };
     case 'file':
       return { title: source.title ?? source.name, detail: source.artist ?? '' };
     case 'demo':
@@ -101,6 +115,9 @@ export function PlayerBar() {
   const muted = useAppStore((state) => state.muted);
   const loading = useAppStore((state) => state.loading);
   const playing = useLibrary((state) => state.nowPlaying);
+  const resume = useLibrary((state) => state.resume);
+  const waiting = useLibrary((state) => (state.resume ? state.byId.get(state.resume.id) : null));
+  const liveSong = useAppStore((state) => state.liveSong);
   const shuffle = useLibrary((state) => state.queue.shuffle);
   const repeat = useLibrary((state) => state.queue.repeat);
   const auto = useSettings((state) => state.autoDirector);
@@ -112,37 +129,25 @@ export function PlayerBar() {
   useEffect(() => {
     let live = true;
     setArt(null);
-    if (playing) {
-      void artFor(playing).then((url) => {
+    const track = playing ?? waiting;
+    if (track) {
+      void artFor(track).then((url) => {
         if (live) setArt(url);
       });
     }
     return () => {
       live = false;
     };
-  }, [playing]);
+  }, [playing, waiting]);
 
   if (phase === 'intro') return null;
 
   const live = isLiveSource(source);
   const hasTimeline = source !== null && !live;
-  const { title, detail } = describe(source);
+  const { title, detail } = describe(source, resume);
 
-  const onPlay = () => {
-    if (audioEngine.transport) {
-      togglePlayback();
-      return;
-    }
-    const tracks = useLibrary.getState().tracks;
-    if (tracks.length > 0 && ensureStarted()) {
-      playTracks(
-        tracks.map((track) => track.id),
-        null,
-      );
-    } else {
-      setLibraryOpen(true);
-    }
-  };
+  const shownArt = live ? (liveSong?.art ?? null) : art;
+  const showPlay = live ? !liveSong?.playing : paused || !hasTimeline;
 
   return (
     <section className="player chrome" aria-label="Player">
@@ -154,8 +159,8 @@ export function PlayerBar() {
         title="Your music (Q)"
         onClick={() => setLibraryOpen(!libraryOpen)}
       >
-        {art ? (
-          <img className="player__art" src={art} alt="" />
+        {shownArt ? (
+          <img className="player__art" src={shownArt} alt="" />
         ) : (
           <span className="player__art player__art--empty" aria-hidden="true">
             <LibraryIcon />
@@ -183,7 +188,7 @@ export function PlayerBar() {
           className="control"
           aria-label="Previous"
           title="Previous (P)"
-          disabled={!playing || live}
+          disabled={live ? !liveSong?.canPrevious : !playing}
           onClick={skipPrevious}
         >
           <SkipIcon style={{ transform: 'scaleX(-1)' }} />
@@ -191,19 +196,23 @@ export function PlayerBar() {
         <button
           type="button"
           className="control control--play"
-          aria-label={live ? 'Listening live' : paused || !hasTimeline ? 'Play' : 'Pause'}
-          title={live ? 'Listening live. Pick a song to play it instead.' : 'Play or pause (Space)'}
-          disabled={live}
-          onClick={onPlay}
+          aria-label={live && !liveSong ? 'Listening live' : showPlay ? 'Play' : 'Pause'}
+          title={
+            live && !liveSong
+              ? 'Listening live. Pick a song to play it instead.'
+              : 'Play or pause (Space)'
+          }
+          disabled={live && !liveSong?.canToggle}
+          onClick={playOrResume}
         >
-          {paused || !hasTimeline ? <PlayIcon /> : <PauseIcon />}
+          {showPlay ? <PlayIcon /> : <PauseIcon />}
         </button>
         <button
           type="button"
           className="control"
           aria-label="Next"
           title="Next (N)"
-          disabled={!playing || live}
+          disabled={live ? !liveSong?.canNext : !playing}
           onClick={skipNext}
         >
           <SkipIcon />

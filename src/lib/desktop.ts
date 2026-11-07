@@ -8,6 +8,9 @@ export const LIVE_AUDIO_LABEL = IS_DESKTOP ? 'System audio' : 'Tab audio';
 export const WINDOWS_APP_URL =
   'https://github.com/Abiks06/Living-Notes/releases/latest/download/Resonance-Setup.exe';
 
+/** Always the website's, as the app's own pages open in the browser. */
+export const PRIVACY_URL = 'https://living-notes.vercel.app/privacy.html';
+
 /** The installer is 64-bit, and Electron needs Windows 10 or later. WOW64 is a 32-bit browser. */
 const WINDOWS_APP_SYSTEM = /Windows NT 1\d.*(?:Win64|WOW64)/;
 

@@ -1,5 +1,6 @@
 // The Windows app: the same built site as the web version, served from inside the app.
-// There's no preload and no Node in the page, so it runs exactly as sandboxed as a website.
+// There's no Node in the page, so it's as sandboxed as a website. The preload adds one thing:
+// what's playing on this PC, and a few controls for it.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -7,21 +8,29 @@ import {
   app,
   BrowserWindow,
   desktopCapturer,
+  ipcMain,
   Menu,
   net,
+  powerSaveBlocker,
   protocol,
   screen,
   session,
   shell,
 } from 'electron';
+import { nowPlayingHelper } from './nowPlaying.js';
 
 const SCHEME = 'resonance';
 const ORIGIN = `${SCHEME}://app`;
 const ROOT = app.getAppPath();
 const SITE = app.isPackaged ? join(ROOT, 'site') : resolve(ROOT, '../dist');
 const WINDOW_STATE = join(app.getPath('userData'), 'window.json');
+const HELPER = app.isPackaged
+  ? join(process.resourcesPath, 'NowPlaying.exe')
+  : join(ROOT, 'now-playing', 'NowPlaying.exe');
 
 const UPDATE_DELAY_MS = 10_000;
+/** Crashing again this soon means reloading isn't helping, so it stops rather than looping. */
+const CRASH_LOOP_MS = 30_000;
 
 /** Only what the app uses, so nothing else can be switched on from the page. */
 const PERMISSIONS = new Set([
@@ -53,7 +62,8 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 // Groups the window with its shortcut on the taskbar, and names it in Windows' media controls.
-app.setAppUserModelId('app.livingnotes.resonance');
+// A Store install already has its own identity, and a different one would split the two.
+if (!process.windowsStore) app.setAppUserModelId('app.livingnotes.resonance');
 
 // Older drivers on Chromium's blocklist would otherwise lose WebGL2 and fall back to the CPU.
 app.commandLine.appendSwitch('ignore-gpu-blocklist');
@@ -73,8 +83,9 @@ async function serve(request) {
   return new Response(response.body, { status: response.status, headers });
 }
 
+const fromApp = (url) => url === ORIGIN || url.startsWith(`${ORIGIN}/`);
+
 function lockDown(target) {
-  const fromApp = (url) => url === ORIGIN || url.startsWith(`${ORIGIN}/`);
   target.setPermissionRequestHandler((contents, permission, decide) => {
     decide(fromApp(contents.getURL()) && PERMISSIONS.has(permission));
   });
@@ -118,6 +129,7 @@ function openWindow() {
     backgroundColor: '#05050a',
     show: false,
     webPreferences: {
+      preload: join(ROOT, 'preload.cjs'),
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
@@ -141,6 +153,13 @@ function openWindow() {
     if (url.startsWith('https://')) void shell.openExternal(url);
     return { action: 'deny' };
   });
+  // A graphics driver can take the page down with it. Coming back beats a blank window.
+  let lastCrash = -Infinity;
+  window.webContents.on('render-process-gone', (_event, { reason }) => {
+    if (reason === 'clean-exit' || Date.now() - lastCrash < CRASH_LOOP_MS) return;
+    lastCrash = Date.now();
+    window.webContents.reload();
+  });
   window.webContents.on('will-navigate', (event, url) => {
     if (!url.startsWith(`${ORIGIN}/`)) event.preventDefault();
   });
@@ -148,13 +167,26 @@ function openWindow() {
   return window;
 }
 
+/** Stops the screen and the PC going to sleep, without touching the user's power settings. */
+function awakeKeeper() {
+  let blocker = null;
+  return (on) => {
+    if (on === true && blocker === null) blocker = powerSaveBlocker.start('prevent-display-sleep');
+    if (on === false && blocker !== null) {
+      powerSaveBlocker.stop(blocker);
+      blocker = null;
+    }
+  };
+}
+
 /**
  * Asks GitHub for a newer version and downloads it quietly. It installs when the app next
- * closes, so nothing interrupts a song. This is the app's only network request, it runs here
- * rather than in the page, and it sends nothing about the music.
+ * closes, so nothing interrupts a song. It runs here rather than in the page, and it sends
+ * nothing about the music.
  */
 async function checkForUpdates() {
-  if (!app.isPackaged) return;
+  // The Store keeps its own installs up to date.
+  if (!app.isPackaged || process.windowsStore) return;
   try {
     // Loaded late, so it costs the launch nothing.
     const { default: updater } = await import('electron-updater');
@@ -180,6 +212,19 @@ if (!app.requestSingleInstanceLock()) {
     session.defaultSession.protocol.handle(SCHEME, serve);
     lockDown(session.defaultSession);
     main = openWindow();
+    const helper = nowPlayingHelper(HELPER, (message) =>
+      main?.webContents.send('now-playing', message),
+    );
+    const onlyTheApp =
+      (handler) =>
+      (event, ...args) => {
+        if (fromApp(event.senderFrame?.url ?? '')) handler(...args);
+      };
+    ipcMain.on('now-playing:start', onlyTheApp(helper.start));
+    ipcMain.on('now-playing:stop', onlyTheApp(helper.stop));
+    ipcMain.on('now-playing:command', onlyTheApp(helper.command));
+    ipcMain.on('keep-awake', onlyTheApp(awakeKeeper()));
+    app.on('before-quit', helper.stop);
     setTimeout(checkForUpdates, UPDATE_DELAY_MS);
   });
 }

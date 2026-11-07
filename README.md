@@ -19,6 +19,9 @@ No sign-up, no install. Click once and the scene is already moving.
 - **Your whole album:** drop several files and they play as a queue in track order, with next and previous.
 - **Any input device:** pick an audio interface or a loopback like BlackHole or Stereo Mix in the Studio.
 - **Six bands** (sub-bass, bass, low-mid, mid, high-mid, treble), each with its own auto-gain and fast-attack/slow-release smoothing.
+- **Live drops:** system audio has no whole song to read, so `src/audio/liveForm.ts` works out its shape and spots drops as it plays, judged only against what's been heard so far.
+- **Lyrics:** off until you accept the offer. Moments spells a few well-chosen words in the particles as they're sung, and Full shows every line, leaving instrumental stretches to the visuals. Names are matched through file-name mess and by length, so the timings come from your recording. Only the title and artist are sent, to [LRCLIB](https://lrclib.net).
+- **It remembers you:** the particles greet you by name when you come back, in a way that fits the hour, how long you've been away and who you play most. All of it stays on your device, and **Forget me** clears it.
 - **Song shape:** section loudness survives the auto-gain, so breakdowns are small and drops are big. A noise gate learns your room, so a silent mic is a still scene.
 - **It knows the song:** load a file and it's analysed in the background into a score: every hit, the tempo, the bar, the melody, the drops and how big each moment is against the whole track. Motion then starts before a hit so that it peaks on it, and the picture waits for Bluetooth headphones. Press `B` to compare with the original reactive version.
 - **The melody as a line:** the lead voice is written across the room as it's sung, with pitch as height and time running right to left. Each song uses the line's full height, and in a known song the coming notes are sketched in ahead of it.
@@ -333,6 +336,8 @@ npm run typecheck  # TypeScript, strict
 npm run build      # static site in dist/
 ```
 
+**Coming back:** the welcome screen is only for a first visit. Once someone has opened music, the app starts on their library, with the last song waiting in the player at the point they left it. Demos stay under **More** in the library.
+
 **Demo tracks:** drop royalty-free files at `public/audio/demo-1.mp3` to `demo-4.mp3`. Titles live in `src/audio/demoTracks.ts`. Until then, each preset plays a loop synthesized in the browser with an `OfflineAudioContext`.
 
 **Audio bench:** with the dev server running, paste this into the browser console. It takes about 20 seconds.
@@ -345,7 +350,9 @@ npm run build      # static site in dist/
 
 **Installing:** the site is also a Progressive Web App, so Chrome and Edge on Windows and Android can install it with no store. It then opens in its own window and starts offline. Install it from the browser's address bar or menu, or from **Install app** in the Visuals menu, which only shows when the browser offers it. `npm run build` writes `dist/sw.js` from `src/pwa/sw.js`, listing the page, the icons and everything in `dist/assets`. Those are the only files it ever stores, so music never enters its cache, and every other request goes straight to the server. The page itself comes from the server whenever it answers, so a deploy shows on the next load, and from the cache if the server fails or takes over 3 seconds. A new worker waits until the old version's tabs close, so an open tab keeps its own lazy chunks. Keep `public/audio` out of the `SHELL` list in `vite.config.ts`: offline, demos use their synthesized loops. The worker only runs in production builds, and `vercel.json` stops `sw.js` being cached so browsers see updates straight away.
 
-**Windows app:** `desktop/` wraps the same built site in Electron, with its own `package.json` so website builds never download it. It adds one thing a browser can't do: **System audio** hears whatever Windows is playing, with no share dialog. Everything else is the website, served from a private `resonance://` scheme with the same security headers as `vercel.json`, no Node in the page, and no network access from the page. The app makes one request of its own: it asks GitHub for a newer version 10 seconds after launch, downloads it quietly, and installs it when the app next closes. That request carries nothing about your music.
+**Windows app:** `desktop/` wraps the same built site in Electron, with its own `package.json` so website builds never download it. It adds what a browser can't do: **System audio** hears whatever Windows is playing, with no share dialog, and shows that song's name and artwork. Play and Skip then control Spotify, YouTube Music or whatever else is playing. A small helper, `desktop/now-playing/NowPlaying.cs`, reads this from Windows, only while System audio is on, and it never leaves the PC. Everything else is the website, served from a private `resonance://` scheme with the same security headers as `vercel.json`, and no Node in the page. The page can only reach the lyrics service, and only if you turn lyrics on. The app asks GitHub for a newer version 10 seconds after launch, downloads it quietly, and installs it when the app next closes. That request carries nothing about your music. In fullscreen with music playing it also keeps the PC awake, letting go after five quiet minutes.
+
+**Microsoft Store:** `npm run store` in `desktop/` builds the package, using the tiles in `desktop/build/appx`. The Store handles updates for those installs, so the app skips its own check there. The Store listing's privacy link is `/privacy.html`.
 
 ```bash
 cd desktop

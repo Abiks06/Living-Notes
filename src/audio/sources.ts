@@ -176,6 +176,13 @@ export async function listAudioInputs(): Promise<{ id: string; label: string }[]
   );
 }
 
+let micTrack: MediaStreamTrack | null = null;
+
+/** True while the system is sending nothing, usually because the microphone is muted in it. */
+export function isMicMuted(): boolean {
+  return micTrack?.muted === true && micTrack.readyState === 'live';
+}
+
 export async function openMicrophone(
   ctx: AudioContext,
   deviceId: string | null = null,
@@ -209,6 +216,7 @@ export async function openMicrophone(
     throw new AudioError('unknown', 'The microphone could not be opened.', { cause: error });
   }
 
+  micTrack = stream.getAudioTracks()[0] ?? null;
   return liveStreamHandle(ctx, stream, stream.getAudioTracks(), 'mic');
 }
 

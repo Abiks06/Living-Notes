@@ -153,6 +153,8 @@ electron-builder's newer MSIX target is only in the version 27 alpha, so I'd use
 
 ### Stage 3: Now Playing (M)
 
+**Built** on branch `claude/stage-3-now-playing`. It uses a small helper of our own rather than the package below, because that package can only watch sessions, not control them.
+
 Windows app only, because a browser can't see other apps.
 
 - Show the title, artist and artwork in the player and title card.
@@ -191,11 +193,15 @@ Each step needs a measurable target. The bench behind this plan should go into `
 
 ### Stage 6: Real lyrics (M, optional)
 
+**Built** in `src/lyrics`, except finding choruses ahead of time.
+
 - Look up synced lyrics for local and streamed songs.
 - Spell real lyric words in time with the song, rather than only the title.
 - Use repeated lines to find choruses before they happen, even on a first listen.
 
-This is the one feature that sends data off the device: song title, artist and length, never audio. It must be opt-in and clearly explained, because "Your music stays on this device" is a promise on your start screen. Lyrics are copyrighted, so check this before shipping it widely, especially in the Store. Flashing single words carries less exposure than showing full lyrics, but that's my reasoning and not legal advice.
+Measured on 30 real files: 26 matched, with no wrong songs. Most of the misses have no lyrics to find. Where the lengths match, lines land within about 0.3 s of the voice.
+
+This is the one feature that sends data off the device: song title and artist, never audio. It must be opt-in and clearly explained, because "Your music stays on this device" is a promise on your start screen. Lyrics are copyrighted, so check this before shipping it widely, especially in the Store. Flashing single words carries less exposure than showing full lyrics, but that's my reasoning and not legal advice.
 
 ### Stage 7: Song memory (M, your decision)
 

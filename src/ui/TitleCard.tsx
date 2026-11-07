@@ -21,22 +21,26 @@ const LONG_TITLE = 34;
 
 export function TitleCard() {
   const track = useLibrary((state) => state.nowPlaying);
+  const liveSong = useAppStore((state) => state.liveSong);
   const comingUp = useLibrary((state) => state.comingUp);
   const hidden = useAppStore((state) => state.uiHiddenManual);
   const [phase, setPhase] = useState<'in' | 'out' | 'gone'>('gone');
   const [art, setArt] = useState<string | null>(null);
 
+  const songKey = liveSong?.key ?? track?.id ?? null;
   useEffect(() => {
-    if (!track) {
+    if (!songKey) {
       setPhase('gone');
       return;
     }
     let live = true;
     setPhase('in');
     setArt(null);
-    void artFor(track, true).then((url) => {
-      if (live) setArt(url);
-    });
+    if (track) {
+      void artFor(track, true).then((url) => {
+        if (live) setArt(url);
+      });
+    }
     const leave = window.setTimeout(() => setPhase('out'), SHOWN_MS);
     const gone = window.setTimeout(() => setPhase('gone'), SHOWN_MS + LEAVING_MS);
     return () => {
@@ -44,24 +48,30 @@ export function TitleCard() {
       window.clearTimeout(leave);
       window.clearTimeout(gone);
     };
-  }, [track]);
+    // Only a new song starts the card, not new details about the same one.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [songKey]);
+
+  const song = liveSong
+    ? { ...liveSong, line: liveSong.album, picture: liveSong.art }
+    : track && { ...track, line: detail(track), picture: art };
 
   if (hidden) return null;
   return (
     <>
-      {track && phase !== 'gone' && (
+      {song && phase !== 'gone' && (
         <div
           className="title-card"
           data-phase={phase}
-          data-long={track.title.length > LONG_TITLE}
-          key={track.id}
+          data-long={song.title.length > LONG_TITLE}
+          key={songKey}
           aria-hidden="true"
         >
-          {art && <img className="title-card__art" src={art} alt="" />}
+          {song.picture && <img className="title-card__art" src={song.picture} alt="" />}
           <div className="title-card__words">
-            <p className="title-card__title">{track.title}</p>
-            <p className="title-card__artist">{track.artist}</p>
-            {detail(track) && <p className="title-card__detail">{detail(track)}</p>}
+            <p className="title-card__title">{song.title}</p>
+            <p className="title-card__artist">{song.artist}</p>
+            {song.line && <p className="title-card__detail">{song.line}</p>}
           </div>
         </div>
       )}

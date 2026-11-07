@@ -3,14 +3,17 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Vector3 } from 'three';
 import { audioFeatures } from '../../audio/features';
 import { useReducedMotion } from '../../lib/useMediaQuery';
+import { useLyrics } from '../../lyrics/lyrics';
 import { benchmarkProbe } from '../../perf/benchmarkProbe';
 import { liveLook } from '../../settings/bindings';
 import { DEFAULT_WORD } from '../../settings/schema';
 import { useSettings } from '../../settings/settingsStore';
 import { useAppStore } from '../../state/appStore';
+import { useProfile } from '../../state/profile';
 import { describeGpu } from '../gpuSupport';
 import { pointerField } from '../interaction/pointerField';
 import { sceneDirector } from '../SceneDirector';
+import { sceneByKey } from '../scenes';
 import {
   GpuUnsupportedError,
   ParticleSimulation,
@@ -22,6 +25,11 @@ import { provisionalDpr, provisionalTier, TIER_TEXTURE_SIZE } from './tiers';
 const WORD_DEBOUNCE_MS = 300;
 /** Comfortably past the end of any crossfade, and well before most first drops. */
 const WORD_AFTER_START_MS = 2500;
+/** Lets the picture settle first, so the greeting forms out of something. */
+const GREETING_AFTER_MS = 1000;
+const GREETING_READ_S = 3;
+/** Long enough for the letters to break up, so the next word doesn't replace them mid-air. */
+const GREETING_LEAVING_S = 1.5;
 
 function activeWord(word: string): string {
   return word.trim() || DEFAULT_WORD;
@@ -37,6 +45,9 @@ export function ParticleField() {
   const word = useSettings((state) => state.word);
   const autoDirector = useSettings((state) => state.autoDirector);
   const source = useAppStore((state) => state.source);
+  const greeting = useProfile((state) => state.greeting);
+  const spelling = useProfile((state) => state.spelling);
+  const lyric = useLyrics((state) => state.spell);
   const reducedMotion = useReducedMotion();
   const gpuKey = useMemo(() => describeGpu(gl), [gl]);
   const [simulation, setSimulation] = useState<ParticleSimulation | null>(null);
@@ -96,17 +107,48 @@ export function ParticleField() {
     return () => window.clearTimeout(timer);
   }, [simulation, word]);
 
+  // Someone coming back is greeted in the particles, before any music has started.
+  useEffect(() => {
+    if (!simulation || !greeting || source || reducedMotion) return;
+    simulation.setFlashWord(greeting);
+    const timer = window.setTimeout(() => {
+      const scene = sceneByKey(useSettings.getState().scene);
+      sceneDirector.flashWord(scene, audioFeatures.snareCount, false, GREETING_READ_S);
+      useProfile.getState().spell(greeting);
+    }, GREETING_AFTER_MS);
+    return () => window.clearTimeout(timer);
+  }, [simulation, greeting, source, reducedMotion]);
+
+  useEffect(() => {
+    if (!spelling) return;
+    const timer = window.setTimeout(
+      useProfile.getState().spelled,
+      (GREETING_READ_S + GREETING_LEAVING_S) * 1000,
+    );
+    return () => window.clearTimeout(timer);
+  }, [spelling]);
+
+  // A lyric borrows the word for a moment, then hands it straight back.
+  useEffect(() => {
+    if (!simulation || !lyric) return;
+    simulation.setFlashWord(lyric);
+    return () => {
+      const now = useAppStore.getState().source;
+      simulation.setFlashWord(flashWordFor(now, useSettings.getState().word));
+    };
+  }, [simulation, lyric]);
+
   // A song's own title is spelled on its first drop, and Auto-VJ spells words on any song. It
   // waits until a song is under way, as rasterizing would stall a crossfade.
   useEffect(() => {
-    const titled = source?.kind === 'file' && Boolean(source.title);
-    if (!simulation || (!autoDirector && !titled)) return;
+    const titled = (source?.kind === 'file' || source?.kind === 'tab') && Boolean(source.title);
+    if (!simulation || greeting || spelling || (!autoDirector && !titled)) return;
     const timer = window.setTimeout(
       () => simulation.setFlashWord(flashWordFor(source, word)),
       titled ? WORD_AFTER_START_MS : WORD_DEBOUNCE_MS,
     );
     return () => window.clearTimeout(timer);
-  }, [simulation, autoDirector, source, word]);
+  }, [simulation, autoDirector, source, word, greeting, spelling]);
 
   useFrame((state, delta) => {
     if (!simulation) return;

@@ -134,6 +134,10 @@ export class AudioEngine {
   }
 
   /** Play/pause/seek for the current source; null for the microphone or when idle. */
+  get currentScore(): Score | null {
+    return this.score;
+  }
+
   get transport(): Transport | null {
     return this.current?.handle.transport ?? null;
   }
@@ -233,11 +237,7 @@ export class AudioEngine {
       extractor.update(analyser, pitchAnalyser, dt, audioFeatures);
       audioFeatures.scored = false;
       audioFeatures.titleDue = false;
-      audioFeatures.presence = 1;
-      audioFeatures.dropPower = 1;
-      audioFeatures.tension = 0;
       audioFeatures.hang = 0;
-      audioFeatures.world = 0;
       audioFeatures.sectionPart = -1;
       this.performScore();
       this.performHandoff(dt);

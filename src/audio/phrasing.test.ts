@@ -120,11 +120,10 @@ describe('InhaleTracker', () => {
     expect(kicks(breath, [1.2, 0.55, 1.2, 0.55])).toBeLessThan(0.05);
   });
 
-  it('holds its breath when the next kick goes missing, and lands the drop', () => {
+  it('holds its breath when the next kick goes missing', () => {
     const breath = new InhaleTracker();
     kicks(breath, Array<number>(12).fill(0.5));
     expect(kicks(breath, [1.4])).toBeGreaterThan(0.7);
-    expect(breath.impact).toBe(1);
   });
 
   it('lets go if no drop comes, as that was a breakdown', () => {

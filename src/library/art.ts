@@ -120,6 +120,22 @@ export function paletteFromPixels(rgba: Uint8ClampedArray): PaletteColors | null
 }
 
 /** The colours of a track's cover, if it has any worth using. */
+/** The same colours from artwork another app supplied. */
+export async function paletteFromImage(url: string): Promise<PaletteColors | null> {
+  try {
+    const image = new Image();
+    image.src = url;
+    await image.decode();
+    const canvas = new OffscreenCanvas(SAMPLE, SAMPLE);
+    const ctx = canvas.getContext('2d');
+    ctx?.drawImage(image, 0, 0, SAMPLE, SAMPLE);
+    const pixels = ctx?.getImageData(0, 0, SAMPLE, SAMPLE).data;
+    return pixels ? paletteFromPixels(pixels) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function paletteFor(track: Track): Promise<PaletteColors | null> {
   try {
     const blob = await coverOf(track);

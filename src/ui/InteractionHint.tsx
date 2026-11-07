@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { useAppStore } from '../state/appStore';
+import { isReturning } from '../state/returning';
 
 const VISIBLE_MS = 9000;
 
 /** One-time tip about orbit / gravity well / zoom; leaves once the visitor tries it. */
+/** Decided once at launch: first-visit help has no place on a return visit. */
+const RETURNING = isReturning();
+
 export function InteractionHint() {
   const phase = useAppStore((state) => state.phase);
   const interacted = useAppStore((state) => state.interacted);
@@ -17,7 +21,7 @@ export function InteractionHint() {
     return () => window.clearTimeout(timer);
   }, [phase]);
 
-  if (phase !== 'running' || interacted || expired) return null;
+  if (phase !== 'running' || interacted || expired || RETURNING) return null;
   return (
     <p className="interaction-hint" role="status">
       {touch
