@@ -19,6 +19,7 @@ declare global {
         command: (verb: LiveCommand, id: string, title: string) => void;
         onUpdate: (listener: (message: HelperMessage) => void) => () => void;
       };
+      keepAwake: (on: boolean) => void;
     };
   }
 }

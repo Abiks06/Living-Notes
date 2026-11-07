@@ -1,4 +1,5 @@
-// The page's only way out of its sandbox: what's playing on this PC, and a few controls for it.
+// The page's only way out of its sandbox: what's playing on this PC, a few controls for it, and
+// keeping the PC awake while someone's watching.
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('resonanceDesktop', {
@@ -12,4 +13,5 @@ contextBridge.exposeInMainWorld('resonanceDesktop', {
       return () => ipcRenderer.removeListener('now-playing', forward);
     },
   },
+  keepAwake: (on) => ipcRenderer.send('keep-awake', on),
 });

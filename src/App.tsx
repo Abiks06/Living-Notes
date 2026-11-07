@@ -1,7 +1,9 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
+import { startStayingAwake } from './lib/stayAwake';
 import { useLibrary } from './library/library';
 import { prepareAudio } from './state/actions';
 import { useAppStore } from './state/appStore';
+import { beginVisit } from './state/profile';
 import { CaptureGuide } from './ui/CaptureGuide';
 import { DropZone } from './ui/DropZone';
 import { LoungeBadge } from './ui/LoungeBadge';
@@ -14,6 +16,8 @@ import { StartOverlay } from './ui/StartOverlay';
 import { TitleCard } from './ui/TitleCard';
 import { TopActions } from './ui/TopActions';
 import { useChromeHidden } from './ui/useChromeHidden';
+import { useRememberPlays } from './ui/useRememberPlays';
+import { Greeting, NameCard } from './ui/Welcome';
 import { useLibraryEdge } from './ui/useLibraryEdge';
 import { useLibraryWatch } from './ui/useLibraryWatch';
 import { useShortcuts } from './ui/useShortcuts';
@@ -37,6 +41,9 @@ const LibraryPanel = lazy(() =>
 
 export function App() {
   useEffect(prepareAudio, []);
+  useEffect(startStayingAwake, []);
+  useEffect(beginVisit, []);
+  useRememberPlays();
   const [painted, setPainted] = useState(false);
   useEffect(() => {
     const timer = window.setTimeout(() => setPainted(true), STAGE_DELAY_MS);
@@ -70,6 +77,8 @@ export function App() {
         Resonance
       </header>
       <TitleCard />
+      <Greeting />
+      <NameCard />
       <StartOverlay />
       <InteractionHint />
       <PlayerBar />

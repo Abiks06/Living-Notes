@@ -11,6 +11,7 @@ import {
   ipcMain,
   Menu,
   net,
+  powerSaveBlocker,
   protocol,
   screen,
   session,
@@ -156,6 +157,18 @@ function openWindow() {
   return window;
 }
 
+/** Stops the screen and the PC going to sleep, without touching the user's power settings. */
+function awakeKeeper() {
+  let blocker = null;
+  return (on) => {
+    if (on === true && blocker === null) blocker = powerSaveBlocker.start('prevent-display-sleep');
+    if (on === false && blocker !== null) {
+      powerSaveBlocker.stop(blocker);
+      blocker = null;
+    }
+  };
+}
+
 /**
  * Asks GitHub for a newer version and downloads it quietly. It installs when the app next
  * closes, so nothing interrupts a song. This is the app's only network request, it runs here
@@ -199,6 +212,7 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.on('now-playing:start', onlyTheApp(helper.start));
     ipcMain.on('now-playing:stop', onlyTheApp(helper.stop));
     ipcMain.on('now-playing:command', onlyTheApp(helper.command));
+    ipcMain.on('keep-awake', onlyTheApp(awakeKeeper()));
     app.on('before-quit', helper.stop);
     setTimeout(checkForUpdates, UPDATE_DELAY_MS);
   });
