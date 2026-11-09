@@ -66,10 +66,38 @@ async function applyArtColours(song: LiveSong): Promise<void> {
   if (job === colourJob && app().liveSong?.key === song.key) setSongColours(colours);
 }
 
+/** How long a press is believed over what Windows still says, while the other app catches up. */
+const PRESS_HOLDS_MS = 1500;
+let pressed: { key: string; playing: boolean; until: number } | null = null;
+
+/** What the button should show: a press counts at once, until Windows agrees or time runs out. */
+function withPress(song: LiveSong): LiveSong {
+  if (!pressed || pressed.key !== song.key || Date.now() > pressed.until) {
+    pressed = null;
+    return song;
+  }
+  if (song.playing === pressed.playing) {
+    pressed = null;
+    return song;
+  }
+  return { ...song, playing: pressed.playing };
+}
+
 /** Passes a button or key press on to the app that's playing. */
 export function controlLive(verb: LiveCommand): void {
   const song = app().liveSong;
-  if (song) window.resonanceDesktop?.nowPlaying.command(verb, song.id, song.reported);
+  if (!song) return;
+  window.resonanceDesktop?.nowPlaying.command(verb, song.id, song.reported);
+  if (verb !== 'toggle') return;
+  // The button answers the finger, not the other app: waiting for Windows to report the
+  // change left it looking unpressed for up to a second.
+  const now = Date.now();
+  const playing = !song.playing;
+  pressed = { key: song.key, playing, until: now + PRESS_HOLDS_MS };
+  const position = song.playing
+    ? song.position + Math.max(0, now - song.positionAt) / 1000
+    : song.position;
+  app().setLiveSong({ ...song, playing, position, positionAt: now });
 }
 
 /** Follows what's playing on this PC, for as long as system audio is what's being heard. */
@@ -109,7 +137,7 @@ export function watchNowPlaying(): void {
     const picked = pickSession(sessions, currentId);
     const session = picked ? timed(picked) : null;
     currentId = session?.id ?? null;
-    const song = session ? toSong(session, art.get(session.key) ?? null) : null;
+    const song = session ? withPress(toSong(session, art.get(session.key) ?? null)) : null;
     const before = app().liveSong;
     const newSong = song?.key !== before?.key;
     const newArt = song?.art !== before?.art;
