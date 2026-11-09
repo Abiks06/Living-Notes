@@ -1,4 +1,13 @@
-import { memo, type UIEvent, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  memo,
+  type UIEvent,
+  useDeferredValue,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { artFor } from '../../library/art';
 import {
   addFolderFiles,
@@ -136,6 +145,20 @@ function SongList({ tracks, onPlay }: { tracks: readonly Track[]; onPlay: (id: s
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
+
+  // Opens on the song that's playing, in the middle of the list, not back at the top.
+  const placed = useRef(false);
+  useLayoutEffect(() => {
+    const element = box.current;
+    // Once only: after that the scroll position is the listener's. A list still being scanned
+    // may not have the song yet, so it waits for it.
+    if (!element || placed.current) return;
+    const index = tracks.findIndex((track) => track.id === useLibrary.getState().nowPlaying?.id);
+    if (index < 0) return;
+    placed.current = true;
+    element.scrollTop = Math.max(0, (index + 0.5) * ROW_HEIGHT - element.clientHeight / 2);
+    setScroll(element.scrollTop);
+  }, [tracks]);
 
   const onScroll = (event: UIEvent<HTMLDivElement>) => setScroll(event.currentTarget.scrollTop);
   const first = Math.max(0, Math.floor(scroll / ROW_HEIGHT) - OVERSCAN);

@@ -3,6 +3,7 @@ import { useLibrary } from '../library/library';
 import { setSongColours } from '../settings/bindings';
 import { type LiveSong, useAppStore } from '../state/appStore';
 import { cleanSong, type MediaSession, pickSession } from './session';
+import { SongClock } from './songClock';
 
 type HelperMessage =
   { type: 'sessions'; sessions: MediaSession[] } | { type: 'art'; key: string; url: string };
@@ -42,18 +43,27 @@ function toSong(session: MediaSession, art: string | null): LiveSong {
   };
 }
 
+/** A timeline last updated this long before the song changed still belongs to the old song. */
+const LEFT_OVER_MS = 1500;
+/** A new song that claims to be further in than this hasn't had its timeline reset yet. */
+const NEW_SONG_S = 6;
+
 /** Enough for a few songs either way, as each picture can be hundreds of KB. */
 const MAX_ART = 12;
 
 const app = () => useAppStore.getState();
 
+let colourJob = 0;
+
 async function applyArtColours(song: LiveSong): Promise<void> {
+  // A cover can be replaced while the last one is still being read, and the latest has to win.
+  const job = ++colourJob;
   if (!song.art || !useLibrary.getState().artColours) {
     setSongColours(null);
     return;
   }
   const colours = await paletteFromImage(song.art);
-  if (app().liveSong?.key === song.key) setSongColours(colours);
+  if (job === colourJob && app().liveSong?.key === song.key) setSongColours(colours);
 }
 
 /** Passes a button or key press on to the app that's playing. */
@@ -70,10 +80,34 @@ export function watchNowPlaying(): void {
   let sessions: readonly MediaSession[] = [];
   let currentId: string | null = null;
   const art = new Map<string, string>();
+  let clock = new SongClock();
+  let clockKey: string | null = null;
+  /** When this song took over from another in the same app, if it was seen to. */
+  let changedAt = 0;
+
+  /**
+   * A session with its place in the song made trustworthy. An app names the next song a moment
+   * before it resets its timeline, and until it does the position is the last song's.
+   */
+  const timed = (session: MediaSession): MediaSession => {
+    if (session.key !== clockKey) {
+      changedAt = clockKey !== null && currentId === session.id ? Date.now() : 0;
+      clockKey = session.key;
+      clock = new SongClock();
+    }
+    const leftOver =
+      changedAt > 0 && session.updated < changedAt - LEFT_OVER_MS && session.position > NEW_SONG_S;
+    if (leftOver) return { ...session, position: 0, duration: 0 };
+    const playing = session.status === 'playing';
+    const steady = clock.report(session.position, session.updated, playing);
+    const limit = session.duration > 0 ? session.duration : Infinity;
+    return { ...session, position: Math.min(limit, Math.max(0, steady)) };
+  };
 
   const refresh = () => {
     if (app().source?.kind !== 'tab') return;
-    const session = pickSession(sessions, currentId);
+    const picked = pickSession(sessions, currentId);
+    const session = picked ? timed(picked) : null;
     currentId = session?.id ?? null;
     const song = session ? toSong(session, art.get(session.key) ?? null) : null;
     const before = app().liveSong;
@@ -107,6 +141,7 @@ export function watchNowPlaying(): void {
       bridge.stop();
       sessions = [];
       currentId = null;
+      clockKey = null;
       app().setLiveSong(null);
     }
   });
