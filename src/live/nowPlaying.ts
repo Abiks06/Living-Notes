@@ -53,13 +53,17 @@ const MAX_ART = 12;
 
 const app = () => useAppStore.getState();
 
+let colourJob = 0;
+
 async function applyArtColours(song: LiveSong): Promise<void> {
+  // A cover can be replaced while the last one is still being read, and the latest has to win.
+  const job = ++colourJob;
   if (!song.art || !useLibrary.getState().artColours) {
     setSongColours(null);
     return;
   }
   const colours = await paletteFromImage(song.art);
-  if (app().liveSong?.key === song.key) setSongColours(colours);
+  if (job === colourJob && app().liveSong?.key === song.key) setSongColours(colours);
 }
 
 /** Passes a button or key press on to the app that's playing. */

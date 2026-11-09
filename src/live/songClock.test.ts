@@ -17,6 +17,8 @@ describe('SongClock', () => {
     });
     const settled = steadied.slice(4);
     expect(Math.max(...settled) - Math.min(...settled)).toBeLessThan(0.1);
+    // Steady, and in the right place: the middle of what was reported.
+    for (const value of settled) expect(Math.abs(value - 0.05)).toBeLessThan(0.08);
     expect(Math.max(...errors) - Math.min(...errors)).toBeGreaterThan(0.3);
   });
 
@@ -30,7 +32,8 @@ describe('SongClock', () => {
     const clock = new SongClock();
     for (let i = 0; i < 6; i++) clock.report(10 + i, 100_000 + i * 1000, true);
     clock.report(15, 106_000, false);
-    // Thirty seconds paused: carrying the old start forward would put the song 30 s ahead.
-    expect(clock.report(15.2, 136_000, true)).toBeCloseTo(15.2, 5);
+    // Under a second paused, which is too small to look like a seek: only the pause itself
+    // says the earlier reports no longer count.
+    expect(clock.report(15, 106_800, true)).toBeCloseTo(15, 5);
   });
 });

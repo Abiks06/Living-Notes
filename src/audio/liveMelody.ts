@@ -2,8 +2,8 @@ import { clamp01 } from './envelope';
 import { AMPLITUDE } from './tone';
 
 /** C3 to C6: where sung and played lead lines sit. Below it is bass, which isn't a tune. */
-const LOW_NOTE = 48;
-const HIGH_NOTE = 84;
+export const LOW_NOTE = 48;
+export const HIGH_NOTE = 84;
 const NOTES = HIGH_NOTE - LOW_NOTE + 1;
 const HARMONICS = 5;
 /** Each harmonic counts for less, which is what keeps the octave below from winning. */

@@ -176,6 +176,8 @@ export function songTime(): number | null {
   if (transport) return transport.paused ? null : transport.currentTime();
   const { liveSong } = useAppStore.getState();
   if (!liveSong?.playing || liveSong.duration <= 0) return null;
+  // An app that has said nothing for this long has stopped reporting, not kept playing.
+  if (Date.now() - liveSong.positionAt > MAX_CARRY_S * 1000) return null;
   const time = livePosition(liveSong.position, liveSong.positionAt, true, Date.now());
   // Past its own end the report is wrong, and no line is better than the wrong one.
   return time <= liveSong.duration + 1 ? time : null;

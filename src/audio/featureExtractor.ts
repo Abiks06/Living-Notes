@@ -4,7 +4,7 @@ import { DynamicsTracker } from './dynamics';
 import { clamp01, follow } from './envelope';
 import { type AudioFeatures, BIN_COUNT, FFT_SIZE, PITCH_FFT_SIZE } from './features';
 import { LiveForm } from './liveForm';
-import { LiveMelody } from './liveMelody';
+import { HIGH_NOTE, LiveMelody, LOW_NOTE } from './liveMelody';
 import { MoodTracker } from './mood';
 import { BarTracker, InhaleTracker } from './phrasing';
 import { TEMPO_LOCKED, TempoTracker } from './tempo';
@@ -212,7 +212,8 @@ export class FeatureExtractor {
       this.lead.level >= LEAD_NOTE &&
       this.sinceStep >= MIN_STEP_S;
     if (this.stepped) this.sinceStep = 0;
-    out.melody = clamp01((this.melodyNote - MELODY_LOW) / MELODY_RANGE);
+    // Across the whole range the live line can report, so low notes aren't flattened.
+    out.melody = clamp01((this.melodyNote - LOW_NOTE) / (HIGH_NOTE - LOW_NOTE));
     out.bpm = this.tempo.bpm;
     out.beatPhase = this.tempo.phase;
     out.tempoConfidence = this.tempo.confidence;

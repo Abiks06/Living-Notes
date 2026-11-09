@@ -31,6 +31,9 @@ static class NowPlaying
     const int ArtRecheckMs = 10000;
     /** How long a picture identical to the last song's is held back as probably left over. */
     const int ArtStaleMs = 3500;
+    /** A picture that takes longer than this to open is given up on until the next look. */
+    const int ArtWaitMs = 2000;
+    const int MaxSongsKept = 400;
 
     /** The picture last sent for each song, as a hash of its bytes. */
     static readonly Dictionary<string, ulong> ArtSent = new Dictionary<string, ulong>();
@@ -71,12 +74,15 @@ static class NowPlaying
     }
 
     /** Waits right here, so the work carries on on this thread and no other. */
-    static T Wait<T>(IAsyncOperation<T> operation)
+    static T Wait<T>(IAsyncOperation<T> operation, int timeoutMs = Timeout.Infinite)
     {
-        using (var finished = new ManualResetEventSlim(false))
+        var finished = new ManualResetEventSlim(false);
+        operation.Completed = (done, status) => finished.Set();
+        if (!finished.Wait(timeoutMs))
         {
-            operation.Completed = (done, status) => finished.Set();
-            finished.Wait();
+            // A picture that never arrives can't be allowed to stop songs and commands with it.
+            operation.Cancel();
+            throw new TimeoutException();
         }
         if (operation.Status == AsyncStatus.Completed) return operation.GetResults();
         throw operation.ErrorCode ?? new InvalidOperationException(operation.Status.ToString());
@@ -131,6 +137,7 @@ static class NowPlaying
     {
         var json = new StringBuilder("{\"type\":\"sessions\",\"sessions\":[");
         bool first = true;
+        var seen = new Dictionary<string, int>();
         foreach (var session in manager.GetSessions())
         {
             try
@@ -156,7 +163,11 @@ static class NowPlaying
                 json.Append(",\"canNext\":").Append(controls.IsNextEnabled ? "true" : "false");
                 json.Append(",\"canPrevious\":").Append(controls.IsPreviousEnabled ? "true" : "false");
                 json.Append('}');
-                CheckArt(id, key, media.Thumbnail);
+                // Two sessions from one app each keep their own place, or they'd reset each other.
+                int nth;
+                seen.TryGetValue(id, out nth);
+                seen[id] = nth + 1;
+                CheckArt(id + "#" + nth, key, media.Thumbnail);
             }
             catch (Exception)
             {
@@ -175,6 +186,9 @@ static class NowPlaying
     static void CheckArt(string id, string key, IRandomAccessStreamReference thumbnail)
     {
         long now = Clock.ElapsedMilliseconds;
+        // Hours of listening would otherwise keep every song ever seen.
+        if (ArtSent.Count > MaxSongsKept) ArtSent.Clear();
+        if (ArtChecked.Count > MaxSongsKept) ArtChecked.Clear();
         string keyBefore;
         if (!KeyOf.TryGetValue(id, out keyBefore) || keyBefore != key)
         {
@@ -194,11 +208,11 @@ static class NowPlaying
 
         try
         {
-            var stream = Wait(thumbnail.OpenReadAsync());
+            var stream = Wait(thumbnail.OpenReadAsync(), ArtWaitMs);
             if (stream.Size == 0 || stream.Size > MaxArtBytes) return;
             var bytes = new byte[stream.Size];
             var reader = new DataReader(stream);
-            Wait<uint>(reader.LoadAsync((uint)stream.Size));
+            Wait<uint>(reader.LoadAsync((uint)stream.Size), ArtWaitMs);
             reader.ReadBytes(bytes);
 
             ulong hash = Hash(bytes);
