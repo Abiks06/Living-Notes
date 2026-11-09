@@ -4,6 +4,7 @@ import { DynamicsTracker } from './dynamics';
 import { clamp01, follow } from './envelope';
 import { type AudioFeatures, BIN_COUNT, FFT_SIZE, PITCH_FFT_SIZE } from './features';
 import { LiveForm } from './liveForm';
+import { LiveMelody } from './liveMelody';
 import { MoodTracker } from './mood';
 import { BarTracker, InhaleTracker } from './phrasing';
 import { TEMPO_LOCKED, TempoTracker } from './tempo';
@@ -22,6 +23,12 @@ const LEVEL_WEIGHTS = [0.22, 0.24, 0.16, 0.16, 0.12, 0.1];
 const MELODY_LOW = 55;
 const MELODY_RANGE = 36;
 const VOCAL_GAIN = 1.5;
+const LEAD_GAIN = 1.3;
+/** Below this the line is too faint to say where it is. */
+const LEAD_HEARD = 0.12;
+const LEAD_NOTE = 0.35;
+/** As fast as a quick run of notes, and no faster, or a wobble in pitch would rattle. */
+const MIN_STEP_S = 0.15;
 const VOCAL_ATTACK_S = 0.06;
 const VOCAL_RELEASE_S = 0.4;
 const HELD_GAIN = 1.8;
@@ -58,6 +65,7 @@ export class FeatureExtractor {
   private readonly dynamics = new DynamicsTracker();
   private readonly shape: SpectralShape;
   private readonly chroma: ChromaTracker;
+  private readonly lead: LiveMelody;
   private readonly tempo = new TempoTracker();
   private readonly bars = new BarTracker();
   private readonly breath = new InhaleTracker();
@@ -67,13 +75,16 @@ export class FeatureExtractor {
   private readonly mood = new MoodTracker();
   private melodyNote = MELODY_LOW + MELODY_RANGE / 2;
   private notes = 0;
+  private stepped = false;
+  private sinceStep = 0;
   private lastKicks = 0;
   private lastSnares = 0;
   private lastOnsets = 0;
   private readonly sums = new Float32Array(BAND_COUNT);
   private readonly peaks = new Float32Array(BAND_COUNT).fill(MIN_RANGE);
   private readonly floors = new Float32Array(BAND_COUNT);
-  private readonly samples = new Float32Array(FFT_SIZE);
+  /** The latest stretch of sound, as the analyser heard it. */
+  readonly samples = new Float32Array(FFT_SIZE);
   private readonly pitchSpectrum = new Uint8Array(PITCH_FFT_SIZE / 2);
 
   /**
@@ -88,6 +99,7 @@ export class FeatureExtractor {
     this.beats = new BeatDetector(this.layout, BIN_COUNT);
     this.shape = new SpectralShape(sampleRate, FFT_SIZE);
     this.chroma = new ChromaTracker(sampleRate, PITCH_FFT_SIZE);
+    this.lead = new LiveMelody(sampleRate, PITCH_FFT_SIZE);
   }
 
   update(
@@ -153,6 +165,7 @@ export class FeatureExtractor {
     this.beats.update(spectrum, dt, active);
     this.shape.update(spectrum, dt, active);
     this.chroma.update(this.pitchSpectrum, dt, active);
+    this.lead.update(this.pitchSpectrum, dt, active);
     const { all, kick, snare, hat } = this.beats;
     const pulse = PULSE_KICK * kick.flux + PULSE_SNARE * snare.flux + PULSE_HAT * hat.flux;
     this.tempo.update(active ? pulse : 0, dt);
@@ -179,13 +192,26 @@ export class FeatureExtractor {
     out.harmonyCount = this.chroma.changeCount;
     const melodic = (out.bands[3] ?? 0) * 0.6 + (out.bands[4] ?? 0) * 0.4;
     const presence = melodic * (1 - this.shape.flatness) * this.chroma.confidence * VOCAL_GAIN;
-    out.vocal = follow(out.vocal, clamp01(presence), dt, VOCAL_ATTACK_S, VOCAL_RELEASE_S);
-    // Live analysis knows the note but not its octave, so it takes the one nearest the last.
-    if (this.chroma.confidence >= 0.25) {
-      const pitch = this.chroma.pitchClass;
-      const nearest = pitch + 12 * Math.round((this.melodyNote - pitch) / 12);
-      this.melodyNote += (nearest - this.melodyNote) * (1 - Math.exp(-dt / 0.05));
+    // A line that stands clear of the mix counts too: chroma alone reads most full mixes as
+    // having almost no voice, which left the melody line and the voice's light nearly still.
+    const line = this.lead.level * melodic * LEAD_GAIN;
+    out.vocal = follow(
+      out.vocal,
+      clamp01(Math.max(presence, line)),
+      dt,
+      VOCAL_ATTACK_S,
+      VOCAL_RELEASE_S,
+    );
+    const before = Math.round(this.melodyNote);
+    if (this.lead.level >= LEAD_HEARD) {
+      this.melodyNote += (this.lead.note - this.melodyNote) * (1 - Math.exp(-dt / 0.04));
     }
+    this.sinceStep += dt;
+    this.stepped =
+      Math.round(this.melodyNote) !== before &&
+      this.lead.level >= LEAD_NOTE &&
+      this.sinceStep >= MIN_STEP_S;
+    if (this.stepped) this.sinceStep = 0;
     out.melody = clamp01((this.melodyNote - MELODY_LOW) / MELODY_RANGE);
     out.bpm = this.tempo.bpm;
     out.beatPhase = this.tempo.phase;
@@ -244,7 +270,9 @@ export class FeatureExtractor {
     const held = clamp01(mids * tonal * HELD_GAIN);
     out.sustain = follow(out.sustain, held, dt, HELD_ATTACK_S, HELD_RELEASE_S);
     out.noteHit = Math.max(0, out.noteHit - dt / NOTE_DECAY_S);
-    if (midHit && out.pitchConfidence >= 0.25 && out.flatness < 0.5) {
+    // A tune moving to a new note is a note too, hit or no hit: sung lines and legato leads
+    // have no attack to catch, and without this the strings sat still through them.
+    if (this.stepped || (midHit && out.pitchConfidence >= 0.25 && out.flatness < 0.5)) {
       this.notes++;
       out.noteHit = 1;
     }
@@ -259,6 +287,7 @@ export class FeatureExtractor {
     this.beats.reset();
     this.dynamics.reset(live);
     this.chroma.reset();
+    this.lead.reset();
     this.tempo.reset();
     this.bars.reset();
     this.breath.reset();

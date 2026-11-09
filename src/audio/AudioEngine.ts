@@ -3,6 +3,7 @@ import { AudioError } from './errors';
 import { FeatureExtractor } from './featureExtractor';
 import { audioFeatures, FFT_SIZE, PITCH_FFT_SIZE } from './features';
 import { IdlePreview } from './idlePreview';
+import { InputLeveller } from './inputLevel';
 import { type Actor, readCast, soloActor } from './cast';
 import type { Score } from './score/score';
 import { ScorePlayer } from './score/scorePlayer';
@@ -61,6 +62,9 @@ export class AudioEngine {
   private analyser: AnalyserNode | null = null;
   private pitchAnalyser: AnalyserNode | null = null;
   private speakers: GainNode | null = null;
+  /** Ahead of the analysers only, so a quiet stream is measured like a file. Never heard. */
+  private inputLevel: GainNode | null = null;
+  private readonly leveller = new InputLeveller();
   private recordDestination: MediaStreamAudioDestinationNode | null = null;
   private endedHandler: (() => void) | null = null;
   private extractor: FeatureExtractor | null = null;
@@ -177,8 +181,7 @@ export class AudioEngine {
     const fader = ctx.createGain();
     fader.gain.setValueCurveAtTime(fadeCurve(true), ctx.currentTime, blending ? fadeS : FADE_IN_S);
     handle.node.connect(fader);
-    fader.connect(analyser);
-    if (this.pitchAnalyser) fader.connect(this.pitchAnalyser);
+    fader.connect(this.inputLevel ?? analyser);
     if (handle.monitored) fader.connect(speakers);
     if (this.recordDestination && handle.recordable) fader.connect(this.recordDestination);
 
@@ -198,6 +201,8 @@ export class AudioEngine {
       this.handoffPresence = audioFeatures.presence;
     } else {
       this.extractor?.reset(handle.acoustic === true);
+      this.leveller.reset();
+      if (this.inputLevel) this.inputLevel.gain.value = 1;
     }
     return true;
   }
@@ -235,6 +240,7 @@ export class AudioEngine {
     const { analyser, pitchAnalyser, extractor } = this;
     if (this.current && analyser && pitchAnalyser && extractor && this.ctx?.state === 'running') {
       extractor.update(analyser, pitchAnalyser, dt, audioFeatures);
+      this.levelInput(extractor.samples, dt);
       audioFeatures.scored = false;
       audioFeatures.titleDue = false;
       audioFeatures.hang = 0;
@@ -248,6 +254,18 @@ export class AudioEngine {
       audioFeatures.cast.fill(0);
     }
     audioFeatures.living = this.living;
+  }
+
+  /**
+   * Sound from another app arrives at whatever volume that app is set to. A microphone is left
+   * alone: its gate is tuned to real rooms, and turning a quiet room up would open it on noise.
+   */
+  private levelInput(samples: Float32Array, dt: number): void {
+    const level = this.inputLevel;
+    const handle = this.current?.handle;
+    if (!level || !handle) return;
+    const streamed = !handle.transport && handle.acoustic !== true;
+    level.gain.value = streamed ? this.leveller.update(samples, level.gain.value, dt) : 1;
   }
 
   /** Performs the score against what's reaching the ears now. */
@@ -307,6 +325,11 @@ export class AudioEngine {
     pitchAnalyser.smoothingTimeConstant = 0;
     pitchAnalyser.minDecibels = MIN_DECIBELS;
     pitchAnalyser.maxDecibels = MAX_DECIBELS;
+
+    const inputLevel = ctx.createGain();
+    inputLevel.connect(analyser);
+    inputLevel.connect(pitchAnalyser);
+    this.inputLevel = inputLevel;
 
     const speakers = ctx.createGain();
     speakers.gain.value = this.volume;

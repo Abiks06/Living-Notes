@@ -25,7 +25,21 @@ static class NowPlaying
 
     static GlobalSystemMediaTransportControlsSessionManager manager;
     static readonly object Writing = new object();
-    static readonly HashSet<string> ArtSent = new HashSet<string>();
+    /** A song's picture can arrive seconds after its name, so it's looked at again for a while. */
+    const int ArtSettleMs = 12000;
+    /** After that only now and then, in case an app swaps it late. */
+    const int ArtRecheckMs = 10000;
+    /** How long a picture identical to the last song's is held back as probably left over. */
+    const int ArtStaleMs = 3500;
+
+    /** The picture last sent for each song, as a hash of its bytes. */
+    static readonly Dictionary<string, ulong> ArtSent = new Dictionary<string, ulong>();
+    /** Per app: the song it's on, when that began, and the picture the song before it had. */
+    static readonly Dictionary<string, string> KeyOf = new Dictionary<string, string>();
+    static readonly Dictionary<string, long> KeySince = new Dictionary<string, long>();
+    static readonly Dictionary<string, ulong> ArtBefore = new Dictionary<string, ulong>();
+    static readonly Dictionary<string, long> ArtChecked = new Dictionary<string, long>();
+    static readonly System.Diagnostics.Stopwatch Clock = System.Diagnostics.Stopwatch.StartNew();
     static readonly AutoResetEvent Changed = new AutoResetEvent(false);
     static readonly ConcurrentQueue<string> Commands = new ConcurrentQueue<string>();
     static TextWriter output;
@@ -142,7 +156,7 @@ static class NowPlaying
                 json.Append(",\"canNext\":").Append(controls.IsNextEnabled ? "true" : "false");
                 json.Append(",\"canPrevious\":").Append(controls.IsPreviousEnabled ? "true" : "false");
                 json.Append('}');
-                if (ArtSent.Add(key)) SendArt(key, media.Thumbnail);
+                CheckArt(id, key, media.Thumbnail);
             }
             catch (Exception)
             {
@@ -152,18 +166,65 @@ static class NowPlaying
         return json.Append("]}").ToString();
     }
 
-    static void SendArt(string key, IRandomAccessStreamReference thumbnail)
+    /**
+     * Sends a song's picture when it's new or has changed. Apps, browsers above all, change the
+     * name first and the picture a moment later, so reading it once pinned the last song's cover
+     * to the next song for good. It's read again while the song is new, and a picture that's
+     * byte for byte the last song's is held back briefly in case the real one is on its way.
+     */
+    static void CheckArt(string id, string key, IRandomAccessStreamReference thumbnail)
     {
+        long now = Clock.ElapsedMilliseconds;
+        string keyBefore;
+        if (!KeyOf.TryGetValue(id, out keyBefore) || keyBefore != key)
+        {
+            ulong shown;
+            if (keyBefore != null && ArtSent.TryGetValue(keyBefore, out shown)) ArtBefore[id] = shown;
+            else ArtBefore.Remove(id);
+            KeyOf[id] = key;
+            KeySince[id] = now;
+            ArtChecked.Remove(key);
+        }
+        long age = now - KeySince[id];
+        long last;
+        bool looked = ArtChecked.TryGetValue(key, out last);
+        if (looked && age > ArtSettleMs && now - last < ArtRecheckMs) return;
+        ArtChecked[key] = now;
         if (thumbnail == null) return;
-        var stream = Wait(thumbnail.OpenReadAsync());
-        if (stream.Size == 0 || stream.Size > MaxArtBytes) return;
-        var bytes = new byte[stream.Size];
-        var reader = new DataReader(stream);
-        Wait<uint>(reader.LoadAsync((uint)stream.Size));
-        reader.ReadBytes(bytes);
-        string type = string.IsNullOrEmpty(stream.ContentType) ? "image/png" : stream.ContentType;
-        string url = "data:" + type + ";base64," + Convert.ToBase64String(bytes);
-        Send("{\"type\":\"art\",\"key\":" + Quote(key) + ",\"url\":" + Quote(url) + "}");
+
+        try
+        {
+            var stream = Wait(thumbnail.OpenReadAsync());
+            if (stream.Size == 0 || stream.Size > MaxArtBytes) return;
+            var bytes = new byte[stream.Size];
+            var reader = new DataReader(stream);
+            Wait<uint>(reader.LoadAsync((uint)stream.Size));
+            reader.ReadBytes(bytes);
+
+            ulong hash = Hash(bytes);
+            ulong sent;
+            if (ArtSent.TryGetValue(key, out sent) && sent == hash) return;
+            ulong before;
+            bool leftOver = ArtBefore.TryGetValue(id, out before) && before == hash;
+            // Two songs from one album do share a cover, so past the wait it's believed.
+            if (leftOver && age < ArtStaleMs) return;
+
+            ArtSent[key] = hash;
+            string type = string.IsNullOrEmpty(stream.ContentType) ? "image/png" : stream.ContentType;
+            string url = "data:" + type + ";base64," + Convert.ToBase64String(bytes);
+            Send("{\"type\":\"art\",\"key\":" + Quote(key) + ",\"url\":" + Quote(url) + "}");
+        }
+        catch (Exception)
+        {
+            // The picture went away while it was being read. It's looked at again next time.
+        }
+    }
+
+    static ulong Hash(byte[] bytes)
+    {
+        ulong hash = 14695981039346656037UL;
+        foreach (byte b in bytes) hash = (hash ^ b) * 1099511628211UL;
+        return hash ^ (ulong)bytes.Length;
     }
 
     static string Number(double value)

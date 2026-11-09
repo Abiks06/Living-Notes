@@ -1,4 +1,13 @@
-import { memo, type UIEvent, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  memo,
+  type UIEvent,
+  useDeferredValue,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { artFor } from '../../library/art';
 import {
   addFolderFiles,
@@ -135,6 +144,18 @@ function SongList({ tracks, onPlay }: { tracks: readonly Track[]; onPlay: (id: s
     const observer = new ResizeObserver(() => setHeight(element.clientHeight));
     observer.observe(element);
     return () => observer.disconnect();
+  }, []);
+
+  // Opens on the song that's playing, in the middle of the list, not back at the top.
+  useLayoutEffect(() => {
+    const element = box.current;
+    const index = tracks.findIndex((track) => track.id === useLibrary.getState().nowPlaying?.id);
+    if (!element || index < 0) return;
+    const top = Math.max(0, (index + 0.5) * ROW_HEIGHT - element.clientHeight / 2);
+    element.scrollTop = top;
+    setScroll(element.scrollTop);
+    // Only when the list first appears: after that the scroll position is the listener's.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onScroll = (event: UIEvent<HTMLDivElement>) => setScroll(event.currentTarget.scrollTop);
