@@ -5,6 +5,12 @@ import { useAppStore } from '../state/appStore';
 import { useProfile } from '../state/profile';
 import { isReturning } from '../state/returning';
 
+/**
+ * A line appears this much before it's sung. Shown on the beat it reads as late, because the
+ * eye needs a moment to find the words: karaoke screens lead for the same reason.
+ */
+const READ_AHEAD_S = 0.3;
+
 /** Past the title card, so the two don't compete. */
 const OFFER_AFTER_MS = 9000;
 
@@ -23,7 +29,7 @@ export function LyricsLine() {
     const check = () => {
       const time = songTime();
       // Only a change reaches React, which is a few times a minute.
-      setLine(time === null ? null : lineAt(lines, time));
+      setLine(time === null ? null : lineAt(lines, time + READ_AHEAD_S));
       frame = requestAnimationFrame(check);
     };
     frame = requestAnimationFrame(check);

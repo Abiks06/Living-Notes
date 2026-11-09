@@ -24,9 +24,31 @@ export interface MediaSession {
  */
 const OWN_SESSION = /^app\.livingnotes\.resonance$|resonance.*!/i;
 
+/** Apps that only ever play music. */
+const MUSIC_APP =
+  /spotify|applemusic|itunes|tidal|deezer|amazonmusic|foobar|musicbee|aimp|winamp|zunemusic|groove/i;
+/** Songs are rarely shorter or longer than this, and films and episodes always are. */
+const SONG_FROM_S = 45;
+const SONG_TO_S = 900;
+const VIDEO_FROM_S = 1200;
+
+/**
+ * How much a session looks like a song, not a film in another tab. Two things can be playing at
+ * once, and the one that's music is the one the visuals are for.
+ */
+export function musicLikeness(session: MediaSession): number {
+  let score = 0;
+  if (MUSIC_APP.test(session.id)) score += 3;
+  if (session.album) score += 1;
+  if (session.duration >= SONG_FROM_S && session.duration <= SONG_TO_S) score += 1;
+  if (session.duration >= VIDEO_FROM_S) score -= 2;
+  return score;
+}
+
 /**
  * Which session system audio is hearing. Something playing beats something paused, and the one
- * already showing wins a tie, so two apps playing at once don't swap back and forth. With nothing
+ * already showing wins a tie, so two apps playing at once don't swap back and forth. Between a
+ * song and a film playing together, the song wins. With nothing
  * playing, the last one used is offered, so Play can start it from here.
  */
 export function pickSession(
@@ -34,7 +56,9 @@ export function pickSession(
   currentId: string | null,
 ): MediaSession | null {
   const others = sessions.filter((session) => !OWN_SESSION.test(session.id) && session.title);
-  const playing = others.filter((session) => session.status === 'playing');
+  const active = others.filter((session) => session.status === 'playing');
+  const most = Math.max(...active.map(musicLikeness));
+  const playing = active.filter((session) => musicLikeness(session) === most);
   const current = (list: readonly MediaSession[]) => list.find((s) => s.id === currentId);
   const latest = [...others].sort((a, b) => b.updated - a.updated)[0];
   return current(playing) ?? playing[0] ?? current(others) ?? latest ?? null;

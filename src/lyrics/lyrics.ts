@@ -155,6 +155,9 @@ export function startLyrics(): void {
   });
 }
 
+/** Longer than any song: past this the last report is stale, not a position. */
+const MAX_CARRY_S = 1800;
+
 /** Where the live app says it is now, carried forward from when it last said so. */
 export function livePosition(
   position: number,
@@ -162,7 +165,9 @@ export function livePosition(
   playing: boolean,
   now: number,
 ): number {
-  return playing ? position + (now - positionAt) / 1000 : position;
+  // An app that stops reporting can't run the words on past where the song could be.
+  const carried = Math.min(MAX_CARRY_S, Math.max(0, (now - positionAt) / 1000));
+  return playing ? position + carried : position;
 }
 
 /** Where in the song this moment is, or null if it's stopped or nobody can say. */
@@ -171,7 +176,9 @@ export function songTime(): number | null {
   if (transport) return transport.paused ? null : transport.currentTime();
   const { liveSong } = useAppStore.getState();
   if (!liveSong?.playing || liveSong.duration <= 0) return null;
-  return livePosition(liveSong.position, liveSong.positionAt, true, Date.now());
+  const time = livePosition(liveSong.position, liveSong.positionAt, true, Date.now());
+  // Past its own end the report is wrong, and no line is better than the wrong one.
+  return time <= liveSong.duration + 1 ? time : null;
 }
 
 /** A moment that's coming up, and how many seconds away it is. */

@@ -35,6 +35,18 @@ describe('pickSession', () => {
     expect(pickSession(list, 'Spotify')?.id).toBe('Spotify');
   });
 
+  it('picks the song over a film playing in another tab', () => {
+    const film = { ...session('Chrome', 'playing', 'An Episode'), duration: 2541 };
+    const song = { ...session('Spotify', 'playing'), duration: 214, album: 'An Album' };
+    expect(pickSession([film, song], 'Chrome')?.id).toBe('Spotify');
+    expect(pickSession([film, song], null)?.id).toBe('Spotify');
+  });
+
+  it('still shows a film when it’s the only thing playing', () => {
+    const film = { ...session('Chrome', 'playing', 'An Episode'), duration: 2541 };
+    expect(pickSession([film, session('Spotify', 'paused')], null)?.id).toBe('Chrome');
+  });
+
   it('keeps a song on screen while it’s paused', () => {
     const list = [session('Netflix', 'paused'), session('Spotify', 'paused')];
     expect(pickSession(list, 'Spotify')?.id).toBe('Spotify');

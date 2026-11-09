@@ -204,3 +204,71 @@ export async function benchMelody(file: Blob, name: string, from = 40, seconds =
     }),
   };
 }
+
+/**
+ * Whether live sound alone can say how far lyrics are out. Lyrics are moved by known amounts,
+ * then fitted back against the live reading of the voice and, for comparison, the score's.
+ */
+export async function benchLyricFit(file: Blob, name: string, title: string, artist: string) {
+  const { scoreFromMix } = await import('../audio/score/loadScore');
+  const { SCORE_RATE } = await import('../audio/score/sections');
+  const { findLyrics } = await import('../lyrics/lookup');
+  const { parseLyrics, shifted } = await import('../lyrics/lrc');
+  const { lyricShift } = await import('../lyrics/align');
+  const clean = await withoutCoverArt(new File([file], name));
+  const decoder = new OfflineAudioContext(2, 1, 48000);
+  const buffer = await decoder.decodeAudioData(await clean.arrayBuffer());
+  const found = await findLyrics({ title, artist, duration: buffer.duration });
+  if (!found) return { name, lyrics: false };
+  const seconds = Math.min(110, buffer.duration - 1);
+  const lines = parseLyrics(found.lrc).filter((line) => line.time < seconds - 5);
+  const score = await scoreFromMix(buffer);
+
+  const rate = buffer.sampleRate;
+  const ctx = new OfflineAudioContext(2, Math.floor(rate * seconds), rate);
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = FFT_SIZE;
+  analyser.smoothingTimeConstant = 0.35;
+  const pitch = ctx.createAnalyser();
+  pitch.fftSize = PITCH_FFT_SIZE;
+  pitch.smoothingTimeConstant = 0;
+  for (const node of [analyser, pitch]) {
+    node.minDecibels = MIN_DECIBELS;
+    node.maxDecibels = MAX_DECIBELS;
+    source.connect(node);
+  }
+  source.connect(ctx.destination);
+  source.start();
+  const extractor = new FeatureExtractor(rate, new Float32Array(6).fill(1));
+  extractor.reset(false);
+  const out = createAudioFeatures();
+  const live = new Float32Array(Math.ceil(seconds * RATE));
+  const dt = 1 / RATE;
+  let time = dt;
+  let frame = 0;
+  const step = () => {
+    extractor.update(analyser, pitch, dt, out);
+    live[frame++] = out.vocal;
+    time += dt;
+    if (time < seconds - 0.05) void ctx.suspend(time).then(step);
+    void ctx.resume();
+  };
+  void ctx.suspend(time).then(step);
+  await ctx.startRendering();
+
+  const voice = score.voice.subarray(0, Math.floor(seconds * SCORE_RATE));
+  const tries = [-6, -3.5, 3, 5.5, 9].map((moved) => ({
+    moved,
+    live: lyricShift(shifted(lines, -moved), live, RATE, moved),
+    score: lyricShift(shifted(lines, -moved), voice, SCORE_RATE, moved),
+  }));
+  return {
+    name: name.slice(0, 22),
+    lines: lines.length,
+    same: found.duration,
+    is: buffer.duration,
+    tries,
+  };
+}
