@@ -10,6 +10,7 @@ import { LoungeBadge } from './ui/LoungeBadge';
 import { LyricsLine, LyricsOffer } from './ui/Lyrics';
 import { MicNotice } from './ui/MicNotice';
 import { NoticeToast } from './ui/NoticeToast';
+import { UpdateNotice } from './ui/UpdateNotice';
 import { PerfOverlay } from './ui/PerfOverlay';
 import { InteractionHint } from './ui/InteractionHint';
 import { PlayerBar } from './ui/PlayerBar';
@@ -100,6 +101,7 @@ export function App() {
       <LoungeBadge />
       <MicNotice />
       <NoticeToast />
+      <UpdateNotice />
       <DropZone />
     </main>
   );

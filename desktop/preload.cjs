@@ -1,5 +1,5 @@
 // The page's only way out of its sandbox: what's playing on this PC, a few controls for it, and
-// keeping the PC awake while someone's watching.
+// keeping the PC awake while someone's watching, and news of updates.
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('resonanceDesktop', {
@@ -14,4 +14,13 @@ contextBridge.exposeInMainWorld('resonanceDesktop', {
     },
   },
   keepAwake: (on) => ipcRenderer.send('keep-awake', on),
+  updates: {
+    version: () => ipcRenderer.invoke('app:version'),
+    install: () => ipcRenderer.send('update:install'),
+    onChange: (listener) => {
+      const forward = (_event, message) => listener(message);
+      ipcRenderer.on('update', forward);
+      return () => ipcRenderer.removeListener('update', forward);
+    },
+  },
 });

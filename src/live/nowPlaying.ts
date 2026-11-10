@@ -10,6 +10,12 @@ type HelperMessage =
 
 export type LiveCommand = 'toggle' | 'next' | 'previous';
 
+/** What the Windows app says about a new version. */
+export interface UpdateMessage {
+  state: 'ready' | 'installing';
+  version: string;
+}
+
 declare global {
   interface Window {
     /** Only the Windows app has this. */
@@ -21,6 +27,11 @@ declare global {
         onUpdate: (listener: (message: HelperMessage) => void) => () => void;
       };
       keepAwake: (on: boolean) => void;
+      updates?: {
+        version: () => Promise<string | null>;
+        install: () => void;
+        onChange: (listener: (message: UpdateMessage) => void) => () => void;
+      };
     };
   }
 }
