@@ -23,6 +23,12 @@ const SCHEME = 'resonance';
 const ORIGIN = `${SCHEME}://app`;
 const ROOT = app.getAppPath();
 const SITE = app.isPackaged ? join(ROOT, 'site') : resolve(ROOT, '../dist');
+// The app was called Resonance, and its folder still holds everyone's settings and library. The
+// new name would start a fresh folder, so installs keep the one they have. A folder chosen on the
+// command line, as tests do, is left alone.
+if (app.isPackaged && !app.commandLine.hasSwitch('user-data-dir')) {
+  app.setPath('userData', join(app.getPath('appData'), 'Resonance'));
+}
 const WINDOW_STATE = join(app.getPath('userData'), 'window.json');
 const HELPER = app.isPackaged
   ? join(process.resourcesPath, 'NowPlaying.exe')
@@ -124,7 +130,7 @@ function openWindow() {
     ...(saved ? { x: saved.x, y: saved.y } : {}),
     minWidth: 360,
     minHeight: 520,
-    title: 'Resonance',
+    title: 'Living Notes',
     // Matches the page, so nothing flashes white before the first frame.
     backgroundColor: '#05050a',
     show: false,

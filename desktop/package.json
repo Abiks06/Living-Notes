@@ -1,7 +1,7 @@
 {
   "name": "resonance-desktop",
-  "productName": "Resonance",
-  "version": "0.1.5",
+  "productName": "Living Notes",
+  "version": "0.1.6",
   "description": "Your music, alive. A music player with GPU visuals that follow the music.",
   "author": "Ayomide Abikoye",
   "private": true,
@@ -21,7 +21,8 @@
   },
   "build": {
     "appId": "app.livingnotes.resonance",
-    "productName": "Resonance",
+    "productName": "Living Notes",
+    "executableName": "Resonance",
     "asar": true,
     "compression": "maximum",
     "electronLanguages": [
@@ -61,8 +62,8 @@
       "icon": "../public/icons/icon-512.png"
     },
     "appx": {
-      "applicationId": "Resonance",
-      "displayName": "Resonance",
+      "applicationId": "LivingNotes",
+      "displayName": "Living Notes",
       "backgroundColor": "#05050a",
       "showNameOnTiles": false,
       "languages": [
@@ -72,8 +73,8 @@
     "nsis": {
       "oneClick": true,
       "perMachine": false,
-      "shortcutName": "Resonance",
-      "artifactName": "Resonance-Setup.${ext}"
+      "shortcutName": "Living Notes",
+      "artifactName": "Living-Notes-Setup.${ext}"
     },
     "electronFuses": {
       "runAsNode": false,

@@ -62,7 +62,7 @@ export function StartOverlay() {
 
   return (
     <div className="start">
-      <h1 className="start__title">Resonance</h1>
+      <h1 className="start__title">Living Notes</h1>
       <p className="start__line">Your music, alive.</p>
       <button type="button" className="start__open" autoFocus onClick={open}>
         {known ? `Open ${known}` : 'Open your music folder'}

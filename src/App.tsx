@@ -75,7 +75,7 @@ export function App() {
       <CaptureGuide />
       <header className="brand chrome" aria-hidden="true">
         <span className="brand__mark" />
-        Resonance
+        Living Notes
       </header>
       <TitleCard />
       <Greeting />

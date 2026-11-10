@@ -5,7 +5,7 @@ import { MicIcon } from './icons';
 const COPY: Partial<Record<MicStatus, { title: string; body: string; retry: boolean }>> = {
   denied: {
     title: 'Microphone access is blocked',
-    body: 'Resonance only analyses sound on your device — nothing is recorded or uploaded. To allow it, click the lock or settings icon in the address bar, set Microphone to “Allow”, then try again.',
+    body: 'Living Notes only analyses sound on your device — nothing is recorded or uploaded. To allow it, click the lock or settings icon in the address bar, set Microphone to “Allow”, then try again.',
     retry: true,
   },
   missing: {
