@@ -66,10 +66,54 @@ async function applyArtColours(song: LiveSong): Promise<void> {
   if (job === colourJob && app().liveSong?.key === song.key) setSongColours(colours);
 }
 
+/** How long a press is believed over what Windows still says, while the other app catches up. */
+const PRESS_HOLDS_MS = 1500;
+/** A press on play or pause: what it asked for, and where the song was when it was made. */
+let pressed: {
+  key: string;
+  playing: boolean;
+  position: number;
+  at: number;
+  until: number;
+} | null = null;
+/** Shows what Windows last reported again, set while system audio is being followed. */
+let republish: (() => void) | null = null;
+
+/** What the button should show: a press counts at once, until Windows agrees or time runs out. */
+function withPress(song: LiveSong): LiveSong {
+  if (!pressed || pressed.key !== song.key || Date.now() > pressed.until) {
+    pressed = null;
+    return song;
+  }
+  if (song.playing === pressed.playing) {
+    pressed = null;
+    return song;
+  }
+  // The place in the song is the press's too: a paused report is stale the moment play is
+  // pressed, and carrying its old time forward would throw the lyrics ahead.
+  return { ...song, playing: pressed.playing, position: pressed.position, positionAt: pressed.at };
+}
+
 /** Passes a button or key press on to the app that's playing. */
 export function controlLive(verb: LiveCommand): void {
   const song = app().liveSong;
-  if (song) window.resonanceDesktop?.nowPlaying.command(verb, song.id, song.reported);
+  if (!song) return;
+  // A key press reaches here whatever the buttons show, and the app may not take this one.
+  const allowed = { toggle: song.canToggle, next: song.canNext, previous: song.canPrevious }[verb];
+  if (!allowed) return;
+  window.resonanceDesktop?.nowPlaying.command(verb, song.id, song.reported);
+  if (verb !== 'toggle') return;
+  // The button answers the finger, not the other app: waiting for Windows to report the
+  // change left it looking unpressed for up to a second.
+  const now = Date.now();
+  const playing = !song.playing;
+  const position = song.playing
+    ? song.position + Math.max(0, now - song.positionAt) / 1000
+    : song.position;
+  pressed = { key: song.key, playing, position, at: now, until: now + PRESS_HOLDS_MS };
+  app().setLiveSong({ ...song, playing, position, positionAt: now });
+  // If Windows never agrees, nothing else would put the button back.
+  window.setTimeout(() => republish?.(), PRESS_HOLDS_MS + 50);
 }
 
 /** Follows what's playing on this PC, for as long as system audio is what's being heard. */
@@ -109,7 +153,7 @@ export function watchNowPlaying(): void {
     const picked = pickSession(sessions, currentId);
     const session = picked ? timed(picked) : null;
     currentId = session?.id ?? null;
-    const song = session ? toSong(session, art.get(session.key) ?? null) : null;
+    const song = session ? withPress(toSong(session, art.get(session.key) ?? null)) : null;
     const before = app().liveSong;
     const newSong = song?.key !== before?.key;
     const newArt = song?.art !== before?.art;
@@ -118,6 +162,8 @@ export function watchNowPlaying(): void {
     if (newSong) app().setSource({ kind: 'tab', title: song?.title, artist: song?.artist });
     if (song && (newSong || newArt)) void applyArtColours(song);
   };
+
+  republish = refresh;
 
   bridge.onUpdate((message) => {
     if (message.type === 'sessions') {
@@ -142,6 +188,7 @@ export function watchNowPlaying(): void {
       sessions = [];
       currentId = null;
       clockKey = null;
+      pressed = null;
       app().setLiveSong(null);
     }
   });

@@ -20,6 +20,10 @@ using Windows.Storage.Streams;
 static class NowPlaying
 {
     const int PollMs = 750;
+    /** After a button press: how often to look, and for how long. */
+    const int HurryPollMs = 60;
+    const int HurryMs = 2500;
+    static long hurryUntil;
     /** Artwork past this isn't worth sending through a pipe. */
     const int MaxArtBytes = 4 * 1024 * 1024;
 
@@ -62,6 +66,9 @@ static class NowPlaying
             {
                 string[] parts = command.Split('\t');
                 if (parts.Length == 3) Perform(parts[0], parts[1], parts[2]);
+                // The app takes a moment to act, and waiting a whole poll to notice is what
+                // made the buttons feel slow. So it's watched closely for a little while.
+                hurryUntil = Clock.ElapsedMilliseconds + HurryMs;
             }
             string snapshot = Snapshot();
             if (snapshot != last)
@@ -69,7 +76,7 @@ static class NowPlaying
                 last = snapshot;
                 Send(snapshot);
             }
-            Changed.WaitOne(PollMs);
+            Changed.WaitOne(Clock.ElapsedMilliseconds < hurryUntil ? HurryPollMs : PollMs);
         }
     }
 
@@ -115,12 +122,21 @@ static class NowPlaying
         try
         {
             GlobalSystemMediaTransportControlsSession target = null;
+            var matches = new List<GlobalSystemMediaTransportControlsSession>();
             foreach (var session in manager.GetSessions())
             {
-                if (session.SourceAppUserModelId != id) continue;
-                var media = Wait(session.TryGetMediaPropertiesAsync());
-                if (target == null || media.Title == title) target = session;
-                if (media.Title == title) break;
+                if (session.SourceAppUserModelId == id) matches.Add(session);
+            }
+            // Nearly always there's one, and asking it for its title first only adds delay.
+            if (matches.Count == 1) target = matches[0];
+            else
+            {
+                foreach (var session in matches)
+                {
+                    var media = Wait(session.TryGetMediaPropertiesAsync());
+                    if (target == null || media.Title == title) target = session;
+                    if (media.Title == title) break;
+                }
             }
             if (target == null) return;
             if (verb == "toggle") Wait(target.TryTogglePlayPauseAsync());
@@ -186,6 +202,8 @@ static class NowPlaying
     static void CheckArt(string id, string key, IRandomAccessStreamReference thumbnail)
     {
         long now = Clock.ElapsedMilliseconds;
+        // Pictures can wait until the buttons have been answered.
+        if (now < hurryUntil) return;
         // Hours of listening would otherwise keep every song ever seen.
         if (ArtSent.Count > MaxSongsKept) ArtSent.Clear();
         if (ArtChecked.Count > MaxSongsKept) ArtChecked.Clear();
