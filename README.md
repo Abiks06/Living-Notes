@@ -1,8 +1,10 @@
-# Resonance
+# Living Notes
+
+Formerly called Resonance.
 
 **A browser-based audio-reactive visual synthesizer: up to 590,000 GPU particles that pulse, twist and sparkle to your music, in real time.**
 
-![Resonance demo](docs/demo.gif)
+![Living Notes demo](docs/demo.gif)
 <!-- Placeholder: record a clip with the app's own record button, convert it to a GIF and save it as docs/demo.gif. -->
 
 **[Live demo →](https://living-notes.vercel.app)**

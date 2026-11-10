@@ -50,7 +50,7 @@ export function MusicDna() {
 
   if (!source) return null;
   return (
-    <p className="hearing" ref={root} data-locked="false" title="What Resonance is hearing">
+    <p className="hearing" ref={root} data-locked="false" title="What Living Notes is hearing">
       <span className="hearing__tempo">
         <span className="hearing__lock" ref={dot} aria-hidden="true" />
         <span ref={tempo}>– BPM</span>

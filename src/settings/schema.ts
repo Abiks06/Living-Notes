@@ -2,7 +2,7 @@ import { BAND_COUNT } from '../audio/bands';
 import { DEFAULT_SCENE, type MorphShapeKey, type SceneKey } from '../scene/scenes';
 import { DEFAULT_CUSTOM_COLORS, type PaletteColors, type PaletteKey } from './palettes';
 
-export const DEFAULT_WORD = 'RESONANCE';
+export const DEFAULT_WORD = 'LIVING NOTES';
 export const MAX_WORD_LENGTH = 16;
 /**
  * A song's own name, which comes from the file rather than a share link, can run longer. Past

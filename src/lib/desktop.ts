@@ -6,7 +6,7 @@ export const LIVE_AUDIO_LABEL = IS_DESKTOP ? 'System audio' : 'Tab audio';
 
 /** Always the newest release. Needs at least one published release to exist. */
 export const WINDOWS_APP_URL =
-  'https://github.com/Abiks06/Living-Notes/releases/latest/download/Resonance-Setup.exe';
+  'https://github.com/Abiks06/Living-Notes/releases/latest/download/Living-Notes-Setup.exe';
 
 /** Always the website's, as the app's own pages open in the browser. */
 export const PRIVACY_URL = 'https://living-notes.vercel.app/privacy.html';

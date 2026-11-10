@@ -21,6 +21,7 @@ describe('pickSession', () => {
     const own = [
       session('app.livingnotes.resonance', 'playing'),
       session('12345Ayomide.Resonance_abc123!Resonance', 'playing'),
+      session('12345Abiks.LivingNotes_abc123!LivingNotes', 'playing'),
     ];
     expect(pickSession(own, null)).toBeNull();
   });

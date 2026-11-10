@@ -82,7 +82,7 @@ export function NameCard() {
       }}
     >
       <label className="name-card__label" htmlFor="name-card-input">
-        What should Resonance call you?
+        What should Living Notes call you?
       </label>
       <input
         id="name-card-input"

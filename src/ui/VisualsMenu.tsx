@@ -235,7 +235,7 @@ export function VisualsMenu({ onClose }: { onClose: () => void }) {
             <button
               type="button"
               className="menu__more"
-              title="Open Resonance in its own window"
+              title="Open Living Notes in its own window"
               onClick={installApp}
             >
               Install app

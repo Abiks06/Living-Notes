@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "Resonance",
-  "short_name": "Resonance",
+  "name": "Living Notes",
+  "short_name": "Living Notes",
   "description": "Your music, alive. A music player with GPU visuals that follow the music.",
   "start_url": "/",
   "scope": "/",

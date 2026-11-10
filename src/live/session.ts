@@ -22,7 +22,7 @@ export interface MediaSession {
  * This app's own session, which is never what system audio is listening to. A Store install has
  * an id Windows makes from the package name, and that still has the app's name in it.
  */
-const OWN_SESSION = /^app\.livingnotes\.resonance$|resonance.*!/i;
+const OWN_SESSION = /^app\.livingnotes\.resonance$|(?:resonance|living\s*notes).*!/i;
 
 /** Apps that only ever play music. */
 const MUSIC_APP =

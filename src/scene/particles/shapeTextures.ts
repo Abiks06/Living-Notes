@@ -4,7 +4,7 @@ import { wordLines } from '../wordLayout';
 
 /**
  * Point-cloud targets that can't be written as a closed-form function of the particle
- * index: the "RESONANCE" wordmark and the Lorenz attractor. One texel per particle,
+ * index: the "LIVING NOTES" wordmark and the Lorenz attractor. One texel per particle,
  * laid out exactly like the simulation textures so the shader can `texelFetch` them.
  */
 

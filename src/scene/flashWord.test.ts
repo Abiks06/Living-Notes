@@ -43,15 +43,15 @@ describe('flashWordFor', () => {
   });
 
   it('uses the track’s name otherwise', () => {
-    expect(flashWordFor({ kind: 'demo', id: 'a', title: 'Pulse Engine' }, 'RESONANCE')).toBe(
+    expect(flashWordFor({ kind: 'demo', id: 'a', title: 'Pulse Engine' }, 'LIVING NOTES')).toBe(
       'Pulse Engine',
     );
-    expect(flashWordFor({ kind: 'file', name: 'Artist - Song.mp3' }, 'RESONANCE')).toBe('Song');
+    expect(flashWordFor({ kind: 'file', name: 'Artist - Song.mp3' }, 'LIVING NOTES')).toBe('Song');
   });
 
   it('falls back to the name of the app for inputs with no title', () => {
-    expect(flashWordFor({ kind: 'mic' }, 'RESONANCE')).toBe('RESONANCE');
-    expect(flashWordFor({ kind: 'file', name: '(1).mp3' }, '  ')).toBe('RESONANCE');
-    expect(flashWordFor(null, '')).toBe('RESONANCE');
+    expect(flashWordFor({ kind: 'mic' }, 'LIVING NOTES')).toBe('LIVING NOTES');
+    expect(flashWordFor({ kind: 'file', name: '(1).mp3' }, '  ')).toBe('LIVING NOTES');
+    expect(flashWordFor(null, '')).toBe('LIVING NOTES');
   });
 });
