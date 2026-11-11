@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('resonanceDesktop', {
   updates: {
     version: () => ipcRenderer.invoke('app:version'),
     install: () => ipcRenderer.send('update:install'),
+    state: () => ipcRenderer.invoke('update:state'),
     onChange: (listener) => {
       const forward = (_event, message) => listener(message);
       ipcRenderer.on('update', forward);

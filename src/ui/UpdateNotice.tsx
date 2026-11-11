@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { UpdateMessage } from '../live/nowPlaying';
 import { useAppStore } from '../state/appStore';
+import { isReturning } from '../state/returning';
 
 const VERSION_KEY = 'resonance.version';
 
@@ -13,7 +14,9 @@ function noteNewVersion(version: string): void {
   } catch {
     return;
   }
-  if (before && before !== version) {
+  // Versions before 0.1.7 didn't note themselves, so someone coming back with none was updated.
+  const updated = before ? before !== version : isReturning();
+  if (updated) {
     useAppStore.getState().showNotice({
       tone: 'info',
       title: `Updated to Living Notes ${version}`,
@@ -36,7 +39,12 @@ export function UpdateNotice() {
     void bridge.version().then((version) => {
       if (version) noteNewVersion(version);
     });
-    return bridge.onChange(setUpdate);
+    const stop = bridge.onChange(setUpdate);
+    // Asked as well as told, as news sent while the page was loading would be missed.
+    void bridge.state().then((state) => {
+      if (state) setUpdate((current) => current ?? state);
+    });
+    return stop;
   }, []);
 
   if (update?.state === 'installing') {

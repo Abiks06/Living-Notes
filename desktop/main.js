@@ -152,7 +152,8 @@ function openWindow() {
   // With an update waiting, closing installs it and opens the new version, rather than leaving
   // a silent install running that looks like the app has crashed.
   window.on('close', (event) => {
-    if (!updates.waiting() || updates.installing()) return;
+    if (!updates.waiting() || updates.closing()) return;
+    // Held open while the notice shows, even if closed again, or quitting would beat the install.
     event.preventDefault();
     updates.install();
   });
@@ -206,6 +207,7 @@ function updateKeeper(tell) {
   let updater = null;
   let waiting = null;
   let installing = false;
+  let closing = false;
   const check = async () => {
     // The Store keeps its own installs up to date.
     if (!app.isPackaged || process.windowsStore || waiting) return;
@@ -227,17 +229,20 @@ function updateKeeper(tell) {
   return {
     check,
     waiting: () => waiting !== null,
-    installing: () => installing,
-    /** A page that reloaded missed the news, so it's told again. */
-    repeat: () => {
-      if (waiting && !installing) tell({ state: 'ready', version: waiting });
-    },
+    /** Once the installer takes over, the window may close. */
+    closing: () => closing,
+    /** What's waiting, for a page that has only just started listening. */
+    state: () =>
+      waiting ? { state: installing ? 'installing' : 'ready', version: waiting } : null,
     install: () => {
       if (!updater || !waiting || installing) return;
       installing = true;
       tell({ state: 'installing', version: waiting });
       // Quietly, as the page has already said what's happening, then open the new version.
-      setTimeout(() => updater.quitAndInstall(true, true), INSTALL_NOTICE_MS);
+      setTimeout(() => {
+        closing = true;
+        updater.quitAndInstall(true, true);
+      }, INSTALL_NOTICE_MS);
     },
   };
 }
@@ -275,7 +280,9 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.handle('app:version', (event) =>
       fromApp(event.senderFrame?.url ?? '') ? app.getVersion() : null,
     );
-    main.webContents.on('did-finish-load', updates.repeat);
+    ipcMain.handle('update:state', (event) =>
+      fromApp(event.senderFrame?.url ?? '') ? updates.state() : null,
+    );
     app.on('before-quit', helper.stop);
     setTimeout(updates.check, UPDATE_DELAY_MS);
     setInterval(updates.check, UPDATE_EVERY_MS);

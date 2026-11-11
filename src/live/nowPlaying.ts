@@ -30,6 +30,7 @@ declare global {
       updates?: {
         version: () => Promise<string | null>;
         install: () => void;
+        state: () => Promise<UpdateMessage | null>;
         onChange: (listener: (message: UpdateMessage) => void) => () => void;
       };
     };
