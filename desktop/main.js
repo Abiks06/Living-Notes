@@ -35,6 +35,10 @@ const HELPER = app.isPackaged
   : join(ROOT, 'now-playing', 'NowPlaying.exe');
 
 const UPDATE_DELAY_MS = 10_000;
+/** Someone who leaves the app open for days still hears about new versions. */
+const UPDATE_EVERY_MS = 4 * 3_600_000;
+/** Long enough to read that it's updating before the window goes. */
+const INSTALL_NOTICE_MS = 1800;
 /** Crashing again this soon means reloading isn't helping, so it stops rather than looping. */
 const CRASH_LOOP_MS = 30_000;
 
@@ -145,6 +149,14 @@ function openWindow() {
   });
   if (saved?.maximized) window.maximize();
   window.once('ready-to-show', () => window.show());
+  // With an update waiting, closing installs it and opens the new version, rather than leaving
+  // a silent install running that looks like the app has crashed.
+  window.on('close', (event) => {
+    if (!updates.waiting() || updates.closing()) return;
+    // Held open while the notice shows, even if closed again, or quitting would beat the install.
+    event.preventDefault();
+    updates.install();
+  });
   window.on('close', () => {
     try {
       writeFileSync(
@@ -186,27 +198,61 @@ function awakeKeeper() {
 }
 
 /**
- * Asks GitHub for a newer version and downloads it quietly. It installs when the app next
- * closes, so nothing interrupts a song. It runs here rather than in the page, and it sends
- * nothing about the music.
+ * Asks GitHub for a newer version and downloads it quietly, so nothing interrupts a song. Once
+ * it's ready the page says so and offers to restart. Otherwise it installs when the app is
+ * closed, and the new version opens straight after. It runs here rather than in the page, and
+ * it sends nothing about the music.
  */
-async function checkForUpdates() {
-  // The Store keeps its own installs up to date.
-  if (!app.isPackaged || process.windowsStore) return;
-  try {
-    // Loaded late, so it costs the launch nothing.
-    const { default: updater } = await import('electron-updater');
-    updater.autoUpdater.on('error', () => undefined);
-    await updater.autoUpdater.checkForUpdates();
-  } catch {
-    // Offline, or GitHub is down: the next launch tries again.
-  }
+function updateKeeper(tell) {
+  let updater = null;
+  let waiting = null;
+  let installing = false;
+  let closing = false;
+  const check = async () => {
+    // The Store keeps its own installs up to date.
+    if (!app.isPackaged || process.windowsStore || waiting) return;
+    try {
+      if (!updater) {
+        // Loaded late, so it costs the launch nothing.
+        updater = (await import('electron-updater')).default.autoUpdater;
+        updater.on('error', () => undefined);
+        updater.on('update-downloaded', ({ version }) => {
+          waiting = version;
+          tell({ state: 'ready', version });
+        });
+      }
+      await updater.checkForUpdates();
+    } catch {
+      // Offline, or GitHub is down: the next check tries again.
+    }
+  };
+  return {
+    check,
+    waiting: () => waiting !== null,
+    /** Once the installer takes over, the window may close. */
+    closing: () => closing,
+    /** What's waiting, for a page that has only just started listening. */
+    state: () =>
+      waiting ? { state: installing ? 'installing' : 'ready', version: waiting } : null,
+    install: () => {
+      if (!updater || !waiting || installing) return;
+      installing = true;
+      tell({ state: 'installing', version: waiting });
+      // Quietly, as the page has already said what's happening, then open the new version.
+      setTimeout(() => {
+        closing = true;
+        updater.quitAndInstall(true, true);
+      }, INSTALL_NOTICE_MS);
+    },
+  };
 }
+
+let main = null;
+const updates = updateKeeper((message) => main?.webContents.send('update', message));
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  let main = null;
   // No menu bar: it's never shown, and leaving it out skips building the default one.
   Menu.setApplicationMenu(null);
   app.on('second-instance', () => {
@@ -230,7 +276,15 @@ if (!app.requestSingleInstanceLock()) {
     ipcMain.on('now-playing:stop', onlyTheApp(helper.stop));
     ipcMain.on('now-playing:command', onlyTheApp(helper.command));
     ipcMain.on('keep-awake', onlyTheApp(awakeKeeper()));
+    ipcMain.on('update:install', onlyTheApp(updates.install));
+    ipcMain.handle('app:version', (event) =>
+      fromApp(event.senderFrame?.url ?? '') ? app.getVersion() : null,
+    );
+    ipcMain.handle('update:state', (event) =>
+      fromApp(event.senderFrame?.url ?? '') ? updates.state() : null,
+    );
     app.on('before-quit', helper.stop);
-    setTimeout(checkForUpdates, UPDATE_DELAY_MS);
+    setTimeout(updates.check, UPDATE_DELAY_MS);
+    setInterval(updates.check, UPDATE_EVERY_MS);
   });
 }
